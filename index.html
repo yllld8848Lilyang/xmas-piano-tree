@@ -180,6 +180,7 @@ const I18N = {
     slap: n => `👋👋 拍了 ${n}/3 下`, nextSong: n => `🎵 下一首：《${n}》`,
     autoOn: '▶ 树自己演奏啦（双手再拍 3 次停下）', autoOff: '⏸ 停下了，换你来弹 🎹', go2: '开始！跟着发光的琴键弹 🎹',
     stIntro: (n, c) => `🎶 开场演奏 · 《${n}》 · 🎁 第 ${c}/12 天`,
+    stFree: '🎹 自由弹奏：所有琴键都能弹 · 🎁 24/24 天都已打开',
     stPlay: (n, p, tot, a, o) => `🎄 《${n}》 第 ${p}/${tot} 句 · ${a ? '▶ 自动演奏中' : '🎹 跟弹'} · 🎁 已开 ${o}/24`,
     photos: n => `📷 已换成你的 ${n} 张照片`, wishes: n => `📝 导入了 ${n} 条祝福`,
   },
@@ -210,6 +211,7 @@ const I18N = {
     slap: n => `👋👋 Slap ${n}/3`, nextSong: n => `🎵 Next: “${n}”`,
     autoOn: '▶ The tree is playing (slap 3 times to stop)', autoOff: '⏸ Stopped — your turn 🎹', go2: 'Go! Follow the glowing keys 🎹',
     stIntro: (n, c) => `🎶 Intro · “${n}” · 🎁 Day ${c}/12`,
+    stFree: '🎹 Free play: every key works · 🎁 All 24 days opened',
     stPlay: (n, p, tot, a, o) => `🎄 “${n}” phrase ${p}/${tot} · ${a ? '▶ Autoplay' : '🎹 Your turn'} · 🎁 Opened ${o}/24`,
     photos: n => `📷 Using your ${n} photos`, wishes: n => `📝 Imported ${n} wishes`,
   },
@@ -378,6 +380,99 @@ function treeChime() {
   [72, 76, 79, 84, 88, 91, 96].forEach((m, i) => setTimeout(() => playNote(m, .55), 40 + i * 55));
 }
 
+/* 礼花炸开：一小串轻柔的“噼啪”闪烁声（高通滤波的白噪声） */
+let noiseBuffer = null;
+function noiseBuf() {
+  if (!noiseBuffer) {
+    const len = ac.sampleRate * 2; noiseBuffer = ac.createBuffer(1, len, ac.sampleRate);
+    const d = noiseBuffer.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  }
+  return noiseBuffer;
+}
+function crackle() {
+  if (!ac) return;
+  for (let i = 0; i < 3; i++) {
+    const t = ac.currentTime + .04 + i * (.05 + Math.random() * .08);
+    const src = ac.createBufferSource(); src.buffer = noiseBuf();
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4500 + Math.random() * 2500;
+    const g = ac.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.035, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + .18);
+    src.connect(hp); hp.connect(g); g.connect(master); src.start(t, Math.random() * 1.5); src.stop(t + .2);
+  }
+}
+
+/* 背景音乐：音乐盒版《平安夜》（Silent Night，1818 年，公版旋律），3/4 拍，配柔和的长音和弦，循环播放 */
+const SN_MEL = [
+  ['G4',1.5],['A4',.5],['G4',1],['E4',3], ['G4',1.5],['A4',.5],['G4',1],['E4',3],
+  ['D5',2],['D5',1],['B4',3], ['C5',2],['C5',1],['G4',3],
+  ['A4',2],['A4',1],['C5',1.5],['B4',.5],['A4',1], ['G4',1.5],['A4',.5],['G4',1],['E4',3],
+  ['A4',2],['A4',1],['C5',1.5],['B4',.5],['A4',1], ['G4',1.5],['A4',.5],['G4',1],['E4',3],
+  ['D5',2],['D5',1],['F5',1.5],['D5',.5],['B4',1], ['C5',3],['E5',3],
+  ['C5',1.5],['G4',.5],['E4',1],['G4',1.5],['F4',.5],['D4',1], ['C4',3],[null,3],
+];
+const SN_CH = { C: [48, 55, 64, 67], F: [41, 53, 60, 65], G: [43, 55, 59, 65] };
+const SN_BARS = 'C C C C G G C C F F C C F F C C G G C C C G C C'.split(' ');
+const BGM_BEAT = .62;
+const bgm = { on: false, gain: null, lp: null, timer: null, events: [], loopBeats: 72, idx: 0, loopStart: 0 };
+(function buildBgm() {
+  let b = 0;
+  SN_MEL.forEach(([n, d]) => { if (n) bgm.events.push({ b, type: 'mel', m: toMidi(n) + 12, d }); b += d; });
+  SN_BARS.forEach((c, i) => {
+    bgm.events.push({ b: i * 3, type: 'pad', ch: SN_CH[c] });
+    bgm.events.push({ b: i * 3 + 1, type: 'tink', m: SN_CH[c][2] + 24 });
+    bgm.events.push({ b: i * 3 + 2, type: 'tink', m: SN_CH[c][3] + 24 });
+  });
+  bgm.events.sort((a, z) => a.b - z.b);
+})();
+function musicBox(m, t, v, out) {
+  const f = 440 * Math.pow(2, (m - 69) / 12);
+  [[1, .5, 2.2], [2, .18, 1.2], [3.01, .06, .6], [5.4, .03, .25]].forEach(([mul, amp, dec]) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = f * mul;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(amp * v, t + .006); g.gain.exponentialRampToValueAtTime(.0001, t + dec);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + dec + .05);
+  });
+}
+function padChord(ch, t, dur, out) {
+  ch.forEach((m, i) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = i === 0 ? 'sine' : 'triangle'; o.frequency.value = 440 * Math.pow(2, (m - 69) / 12);
+    o.detune.value = (Math.random() - .5) * 8;
+    const peak = i === 0 ? .09 : .035;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(peak, t + .5);
+    g.gain.setValueAtTime(peak, t + dur - .1); g.gain.linearRampToValueAtTime(0, t + dur + .7);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + .8);
+  });
+}
+function bgmTick() {
+  if (!bgm.on) return;
+  const ahead = ac.currentTime + .5;
+  while (true) {
+    const ev = bgm.events[bgm.idx], t = bgm.loopStart + ev.b * BGM_BEAT;
+    if (t > ahead) break;
+    if (ev.type === 'mel') musicBox(ev.m, t, .55, bgm.gain);
+    else if (ev.type === 'tink') musicBox(ev.m, t, .13, bgm.gain);
+    else padChord(ev.ch, t, 3 * BGM_BEAT, bgm.lp);
+    bgm.idx++;
+    if (bgm.idx >= bgm.events.length) { bgm.idx = 0; bgm.loopStart += bgm.loopBeats * BGM_BEAT; }
+  }
+}
+function bgmStart() {
+  if (!ac || bgm.on) return;
+  bgm.on = true;
+  bgm.gain = ac.createGain(); bgm.gain.gain.setValueAtTime(0, ac.currentTime); bgm.gain.gain.linearRampToValueAtTime(.7, ac.currentTime + 2.5);
+  bgm.lp = ac.createBiquadFilter(); bgm.lp.type = 'lowpass'; bgm.lp.frequency.value = 1400; bgm.lp.connect(bgm.gain);
+  bgm.gain.connect(master);
+  bgm.idx = 0; bgm.loopStart = ac.currentTime + 1.2;
+  bgm.timer = setInterval(bgmTick, 100); bgmTick();
+}
+function bgmStop() {
+  if (!bgm.on) return;
+  bgm.on = false; clearInterval(bgm.timer);
+  const g = bgm.gain, t0 = ac.currentTime;
+  g.gain.cancelScheduledValues(t0); g.gain.setValueAtTime(g.gain.value, t0); g.gain.linearRampToValueAtTime(0, t0 + 1.2);
+  setTimeout(() => { try { g.disconnect(); } catch (e) {} }, 2500);
+}
+
 /* ---------------- 布局 ---------------- */
 const boards = [{}, {}];
 const tree = { cx: 0, top: 0, bottom: 0, R: 0 };
@@ -495,7 +590,7 @@ function gestures(now) {
   if (state === 'ending') endOpen = live.length >= 1 && live.every(h => isOpenHand(h.pts));
   // 拍手确认
   if (state === 'ready') clapCheck(live, now);
-  if (state === 'play') live.forEach(h => fingers(h));
+  if (state === 'play' || state === 'ending') live.forEach(h => fingers(h));
   dwellCheck(live, now);
   if (state === 'play') {
     // 双手向下拍 3 次
@@ -562,7 +657,9 @@ function dwellCheck(live, now) {
 let greetTimer = null, fwUntil = 0;
 function showGreeting() {
   $('#greet').classList.add('show');
-  auto = false; clearTimeout(autoTimer); updateStatus();
+  auto = false; clearTimeout(autoTimer); freePlay = true; updateStatus();
+  clearTimeout(cardTimer); $('#card').classList.remove('show');
+  bgmStart();
   fwUntil = performance.now() + 9000; starBoost = 1;
   const gin = $('#gin');
   if (!gin.dataset.snow) {
@@ -593,7 +690,8 @@ function replay() {
   if (state !== 'ending') return;
   $('#replayBtn').style.display = 'none';
   state = 'scatter'; gather = 0; charge = 0; endPhase = 'tree'; exploding = false; holdGather = false;
-  auto = false; clearTimeout(autoTimer); introCount = 0; introEnding = false; opened = 12; recapIdx = 0;
+  auto = false; clearTimeout(autoTimer); introCount = 0; introEnding = false; opened = 12; recapIdx = 0; freePlay = false;
+  bgmStop();
   songIdx = 0; phraseIdx = 0; noteIdx = 0;
   parts.forEach(p => { p.sx = Math.random(); p.sy = Math.random(); });
   ['#help', '#status', '#banner'].forEach(s => $(s).style.display = 'none');
@@ -664,7 +762,7 @@ function burst(x, y, col) {
     const a = i / n * TAU + Math.random() * .1, sp = (180 + Math.random() * 260) * S;
     sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 90 * S, life: 1.2 + Math.random() * .6, age: 0, col: i % 3 ? col : alt, conf: false });
   }
-  playNote(48 + Math.floor(Math.random() * 12), .25);
+  crackle();
 }
 let fwNext = 0;
 function drawFireworks(dt, now) {
@@ -762,14 +860,14 @@ function fingers(h) {
 }
 
 /* ---------------- 弹奏逻辑 ---------------- */
-let auto = false, autoTimer = null;
+let auto = false, autoTimer = null, freePlay = false;   // freePlay：贺卡出现后，所有琴键都能自由弹
 function pressKey(k, src) {
   // 玩家自己弹时，只有当前该弹的那个音会响；按错不出声
-  if (src === 'user' && state === 'play' && (auto || curNote().midi !== k.midi)) return;
+  if (src === 'user' && state === 'play' && !freePlay && (auto || curNote().midi !== k.midi)) return;
   playNote(k.midi, src === 'auto' ? .85 : 1);
   k.flash = 1; k.ball.glow = 1;
   trails.push({ k, t: 0 });
-  if (state !== 'play' && state !== 'intro') return;
+  if (freePlay || (state !== 'play' && state !== 'intro')) return;
   if ((src === 'auto') === auto && curNote().midi === k.midi) advance();
 }
 function advance() {
@@ -792,7 +890,7 @@ function autoStep() {
   autoTimer = setTimeout(autoStep, (n.d * BEAT + (endOfPhrase ? BEAT * .6 : 0)) * 1000);
 }
 function toggleAuto() {
-  if (state !== 'play') return;
+  if (state !== 'play' || freePlay) return;
   auto = !auto; clearTimeout(autoTimer);
   if (auto) { toast(t('autoOn')); autoTimer = setTimeout(autoStep, 500); }
   else toast(t('autoOff'));
@@ -801,6 +899,7 @@ function toggleAuto() {
 function updateStatus() {
   if (state === 'intro') { $('#status').textContent = t('stIntro', sname(songs[songIdx]), introCount); return; }
   if (state !== 'play') return;
+  if (freePlay) { $('#status').textContent = t('stFree'); return; }
   const s = songs[songIdx];
   $('#status').textContent = t('stPlay', sname(s), phraseIdx + 1, s.phrases.length, auto, opened);
 }
@@ -922,7 +1021,7 @@ function drawTree() {
   // 彩球（无数字）
   const ba = Math.max(0, (gather - .82) / .18);
   if (ba > 0) {
-    const hint = state === 'play' && !auto ? curNote().midi : -1;
+    const hint = state === 'play' && !auto && !freePlay ? curNote().midi : -1;
     const list = balls.map(b => {
       const r = b.h * R * 1.0, an = b.a + rot;
       b.z = Math.sin(an); b.x = cx + Math.cos(an) * r; b.y = top + b.h * th + b.z * r * .16; return b;
@@ -946,8 +1045,8 @@ function drawTree() {
   }
 }
 function drawBoards() {
-  const hint = state === 'play' && !auto ? curNote().midi : -1;
-  const nxt = state === 'play' && !auto ? nextNote().midi : -1;
+  const hint = state === 'play' && !auto && !freePlay ? curNote().midi : -1;
+  const nxt = state === 'play' && !auto && !freePlay ? nextNote().midi : -1;
   boards.forEach(b => {
     ctx.save();
     rr(b.x - 12 * S, b.y - 34 * S, b.w + 24 * S, b.h + 46 * S, 16 * S);
@@ -1071,7 +1170,7 @@ function frame(now) {
   drawSnow(dt);
   drawTree();
   drawStar(tree.cx, (tree.topNow || tree.top) - 8 * S, Math.min(1, gather * 1.2));
-  if (state === 'intro' || state === 'ready' || state === 'play') { drawBoards(); drawTrails(dt); }
+  if (state === 'intro' || state === 'ready' || state === 'play' || state === 'ending') { drawBoards(); drawTrails(dt); }
   if (state === 'scatter') drawGatherHint();
   if (state === 'ending' && !$('#greet').classList.contains('show')) drawEndHint();
   drawFireworks(dt, now);
@@ -1083,11 +1182,12 @@ function frame(now) {
 let mouseHold = false, keyHold = false, mouseKey = null;
 cv.addEventListener('mousedown', e => {
   initAudio();
-  if (state === 'scatter' || state === 'ending') { mouseHold = true; return; }
+  if (state === 'ending') { const k = hitKey(e.clientX, e.clientY); if (k) { pressKey(k, 'user'); mouseKey = k; } else mouseHold = true; return; }
+  if (state === 'scatter') { mouseHold = true; return; }
   if (state === 'play') { const k = hitKey(e.clientX, e.clientY); if (k) { pressKey(k, 'user'); mouseKey = k; } }
 });
 cv.addEventListener('mousemove', e => {
-  if (state !== 'play' || !(e.buttons & 1)) return;
+  if ((state !== 'play' && state !== 'ending') || !(e.buttons & 1) || mouseHold) return;
   const k = hitKey(e.clientX, e.clientY);
   if (k && k !== mouseKey) pressKey(k, 'user');
   mouseKey = k;
