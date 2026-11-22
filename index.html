@@ -30,10 +30,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:#03040c;font-family:
 #toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,30,.9);border:1px solid rgba(255,215,130,.35);padding:10px 22px;border-radius:22px;font-size:15px;opacity:0;transition:all .3s;pointer-events:none;z-index:30;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 /* 日历卡片 */
-#card{position:fixed;left:50%;top:50%;width:min(28vw,44vh);background:#fff;padding:12px 12px 0;border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 40px rgba(255,220,140,.25);transform:translate(-50%,-50%) scale(.3) rotate(-10deg);opacity:0;transition:transform .5s cubic-bezier(.2,1.5,.4,1),opacity .35s;pointer-events:none;z-index:15}
+#card{position:fixed;left:50%;top:50%;width:min(26vw,40vh);background:#fff;padding:12px 12px 0;border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 40px rgba(255,220,140,.25);transform:translate(-50%,-50%) scale(.3) rotate(-10deg);opacity:0;transition:transform .5s cubic-bezier(.2,1.5,.4,1),opacity .35s;pointer-events:none;z-index:15}
 #card.show{transform:translate(-50%,-50%) scale(1) rotate(-2deg);opacity:1}
-#card .ph{width:100%;aspect-ratio:1/1;overflow:hidden;background:#ddd}
-#card img{width:100%;height:100%;object-fit:cover;display:block}
+#card .ph{width:100%;aspect-ratio:3/4;overflow:hidden;background:#ddd}
+#card img{width:100%;height:100%;object-fit:cover;display:block;user-select:none;-webkit-user-drag:none;pointer-events:none}
 #cardCap{color:#333;font-size:15px;text-align:center;padding:12px 6px 14px;line-height:1.5}
 /* 开始页 */
 #start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(ellipse at center,#0d1430 0%,#03040c 70%);z-index:40}
@@ -101,11 +101,7 @@ input[type=file]{display:none}
 
 <div id="side">
   <button id="modeBtn"></button>
-  <button id="photoBtn" data-i18n="photoBtn"></button>
-  <button id="txtBtn" data-i18n="txtBtn"></button>
 </div>
-<input type="file" id="photoIn" accept="image/*" multiple>
-<input type="file" id="txtIn" accept=".txt,text/plain">
 
 <button id="langBtn"></button>
 <div id="status"></div>
@@ -120,7 +116,7 @@ input[type=file]{display:none}
 </div></div></div>
 <div id="cam"><video id="video" playsinline muted></video><div id="camTip" data-i18n="camTip"></div><div id="camRz"></div></div>
 <div id="toast"></div>
-<div id="card"><div class="ph"><img id="cardImg" alt=""></div><div id="cardCap"></div></div>
+<div id="card"><div class="ph"><img id="cardImg" alt="" draggable="false"></div><div id="cardCap"></div></div>
 
 <div id="ready">
   <div class="cane"><div class="rbox" id="rbox">
@@ -286,7 +282,11 @@ const nextNote = () => {
 const DEFAULT_WISH = ['今天也要好好吃饭 🍜','给自己泡一杯热可可 ☕','给想念的人发一条消息 💌','早点睡，梦里会下雪 🌙','出门晒十分钟太阳 ☀️','听一首最爱的歌 🎧','夸夸今天的自己 ✨','整理一下书桌，心情也会变亮 🧹','吃一块甜甜的点心 🍪','拍一张今天的天空 ☁️','给家里打个电话 📞','记得多喝水 💧','做一件拖了很久的小事 ✅','对着镜子笑一下 😊','换上最暖和的毛衣 🧶','把手机放下，散步十分钟 🚶','写下三件今天开心的事 📝','去超市买一样没吃过的零食 🛒','给朋友一个拥抱 🤗','看一部温暖的电影 🎬','冬至快乐，吃点热乎的 🥟','许一个小小的愿望 ⭐','把礼物包好，明天就是平安夜 🎀','平安夜快乐，圣诞快乐！🎄'];
 const DEFAULT_WISH_EN = ['Have a proper meal today 🍜','Make yourself a hot chocolate ☕','Message someone you miss 💌','Sleep early — it might snow in your dreams 🌙','Get ten minutes of sunshine ☀️','Listen to your favourite song 🎧','Give yourself a compliment ✨','Tidy your desk and brighten your mood 🧹','Treat yourself to something sweet 🍪','Take a photo of today’s sky ☁️','Call home 📞','Remember to drink water 💧','Finish one small task you’ve been putting off ✅','Smile at yourself in the mirror 😊','Wear your cosiest jumper 🧶','Put your phone down and walk for ten minutes 🚶','Write down three happy things from today 📝','Buy a snack you’ve never tried 🛒','Give a friend a hug 🤗','Watch a heart-warming film 🎬','Happy winter solstice — eat something warm 🥟','Make a little wish ⭐','Wrap the presents — Christmas Eve is tomorrow 🎀','Merry Christmas Eve, and Merry Christmas! 🎄'];
 let wishes = DEFAULT_WISH.slice(), customWishes = null;
-let photos = [];
+// 日历照片由开发者放在 photos/ 文件夹：p01–p21 按原文件名顺序；第 22–24 天重复最后 3 张
+const PHOTO_COUNT = 21;
+const photoFor = day => { const n = day <= PHOTO_COUNT ? day : PHOTO_COUNT - (24 - day); return `photos/p${String(Math.max(1, n)).padStart(2, '0')}.jpg`; };
+const photoCache = [];
+for (let d = 1; d <= PHOTO_COUNT; d++) { const im = new Image(); im.src = photoFor(d); photoCache.push(im); }
 let opened = 12, recapIdx = 0;
 const defaultImgCache = {};
 function defaultImg(day) {
@@ -306,7 +306,7 @@ function defaultImg(day) {
 }
 let cardTimer = null;
 function showCard(day, recap) {
-  $('#cardImg').src = photos.length ? photos[(day - 1) % photos.length] : defaultImg(day);
+  const img = $('#cardImg'); img.onerror = () => { img.onerror = null; img.src = defaultImg(day); }; img.src = photoFor(day);
   $('#cardCap').textContent = (recap ? t('recap', day) : t('day', day)) + (wishes[day - 1] || DEFAULT_WISH[day - 1]);
   const el = $('#card'); el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   clearTimeout(cardTimer); cardTimer = setTimeout(() => el.classList.remove('show'), 2000);
@@ -347,6 +347,35 @@ function playNote(midi, vel = 1) {
     g.gain.exponentialRampToValueAtTime(.0001, t + dec);
     o.connect(g); g.connect(master); o.start(t); o.stop(t + dec + .05);
   });
+}
+
+/* 聚树音效：握拳时一阵越来越高的“风声”，同时一串五声音阶的铃音往上爬；聚成时一记闪亮的和弦 */
+let whoosh = null, sfxStep = -1;
+const SPARK = [67, 69, 72, 74, 76, 79, 81, 84, 86, 88, 91, 93, 96, 98, 100, 103];
+function ensureWhoosh() {
+  if (whoosh || !ac) return;
+  const len = ac.sampleRate * 2, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+  const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 1.4; bp.frequency.value = 300;
+  const g = ac.createGain(); g.gain.value = 0;
+  src.connect(bp); bp.connect(g); g.connect(master); src.start();
+  whoosh = { bp, g };
+}
+function gatherSfx(holding, prog) {
+  if (!ac) return;
+  ensureWhoosh();
+  const t0 = ac.currentTime;
+  whoosh.g.gain.setTargetAtTime(holding ? .05 + .1 * prog : 0, t0, holding ? .1 : .15);
+  whoosh.bp.frequency.setTargetAtTime(250 + prog * 3200, t0, .08);
+  if (!holding) { sfxStep = Math.floor(prog * SPARK.length) - 1; return; }
+  const step = Math.min(SPARK.length - 1, Math.floor(prog * SPARK.length));
+  if (step > sfxStep) { sfxStep = step; playNote(SPARK[step], .28 + .3 * prog); }
+}
+function treeChime() {
+  sfxStep = -1;
+  playNote(48, .5);
+  [72, 76, 79, 84, 88, 91, 96].forEach((m, i) => setTimeout(() => playNote(m, .55), 40 + i * 55));
 }
 
 /* ---------------- 布局 ---------------- */
@@ -593,7 +622,7 @@ function endingStep(dt) {
   } else {
     if (exploding) { gather = Math.max(0, gather - dt / .6); if (gather <= 0) exploding = false; }
     else if (fist) gather = Math.min(1, gather + dt / 1.8);
-    if (!exploding && gather >= 1) { endPhase = 'tree'; charge = 0; starBoost = 1; [67, 72, 76, 79].forEach((m, i) => setTimeout(() => playNote(m, .6), i * 90)); }
+    if (!exploding && gather >= 1) { endPhase = 'tree'; charge = 0; starBoost = 1; treeChime(); }
   }
 }
 function drawEndHint() {
@@ -1024,11 +1053,15 @@ function frame(now) {
   if (state === 'scatter') {
     if (holdGather || mouseHold || keyHold) gather = Math.min(1, gather + dt / 1.8);
     if (gather >= 1) {
-      state = 'treeDone'; starBoost = 1; spawnSnow(60);
+      state = 'treeDone'; starBoost = 1; spawnSnow(60); treeChime();
       setTimeout(startIntro, 900);
     }
   }
   if (state === 'ending') endingStep(dt);
+  {
+    const regather = state === 'scatter' || (state === 'ending' && endPhase === 'scatter' && !exploding);
+    gatherSfx(regather && (holdGather || mouseHold || keyHold) && gather < 1, gather);
+  }
   const sq = state === 'ending' && endPhase === 'tree' ? charge : 0;
   spin += dt * (.25 + 2.4 * sq * sq);
   starBoost = Math.max(sq * .8, starBoost - dt * 1.2);
@@ -1079,7 +1112,6 @@ addEventListener('keyup', e => { if (e.key.toLowerCase() === 'g') keyHold = fals
 function toggleHelp() { const el = $('#help'); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
 $('#skipBtn').onclick = () => endIntro(true);
 $('#readyBtn').onclick = () => { initAudio(); startPlay(); };
-$('#photoBtn').onclick = () => $('#photoIn').click();
 $('#modeBtn').onclick = () => setMode(playMode === 1 ? 3 : playMode === 3 ? 5 : 1);
 document.querySelectorAll('.modes .dwell').forEach(b => b.onclick = () => setMode(+b.dataset.mode));
 
@@ -1119,29 +1151,11 @@ document.querySelectorAll('.modes .dwell').forEach(b => b.onclick = () => setMod
   });
   addEventListener('resize', () => { if (cam.style.top) { const r = cam.getBoundingClientRect(); place(r.left, r.top, r.width); } });
 })();
-$('#txtBtn').onclick = () => $('#txtIn').click();
 $('#greetBtn').onclick = hideGreeting;
 $('#replayBtn').onclick = replay;
-function loadPhotos(files) {
-  const imgs = [...files].filter(f => f.type.startsWith('image/'));
-  if (!imgs.length) return;
-  photos = []; let done = 0;
-  imgs.forEach((f, i) => { const r = new FileReader(); r.onload = () => { photos[i] = r.result; if (++done === imgs.length) { photos = photos.filter(Boolean); toast(t('photos', photos.length)); } }; r.readAsDataURL(f); });
-}
-$('#photoIn').onchange = e => loadPhotos(e.target.files);
-$('#txtIn').onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = () => {
-    const lines = String(r.result).split(/\r?\n/).map(s => s.trim()).filter(Boolean);
-    customWishes = true;
-    wishes = (lang === 'zh' ? DEFAULT_WISH : DEFAULT_WISH_EN).map((d, i) => lines[i] || d);
-    toast(t('wishes', Math.min(24, lines.length)));
-  };
-  r.readAsText(f, 'utf-8');
-};
-addEventListener('dragover', e => e.preventDefault());
-addEventListener('drop', e => { e.preventDefault(); loadPhotos(e.dataTransfer.files); });
+// 禁止右键另存、拖拽图片（挡住随手保存）
+addEventListener('contextmenu', e => e.preventDefault());
+addEventListener('dragstart', e => { if (e.target.tagName === 'IMG') e.preventDefault(); });
 
 let toastTimer = null;
 function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2200); }

@@ -11,3 +11,8 @@ A hand-gesture Christmas web game: gather the stars into a tree with your fists,
 - No camera? Mouse and keyboard work too. / 没有摄像头也可以用鼠标和键盘玩。
 
 Single-file app: everything is in `index.html`.
+
+## For the developer / 开发者说明
+
+- Calendar photos live in `photos/` as `p01.jpg` … `p21.jpg` (web-size copies, no EXIF). Days 22–24 reuse p19–p21. To change them, replace the files and update `PHOTO_COUNT` in `index.html`.
+- 日历照片在 `photos/` 文件夹（压缩后的网页版，已去掉拍摄信息）。第 22–24 天重复最后 3 张。
