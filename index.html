@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>圣诞钢琴日历树</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;background:#03040c;font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#f3f3f3}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+#help{position:fixed;left:16px;top:16px;max-width:380px;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);border-radius:14px;padding:14px 18px;font-size:14px;line-height:1.85;display:none;z-index:5}
+#help h3{font-size:16px;margin-bottom:4px}
+#help .k{color:#9a9a9a;font-size:12px;margin-top:4px}
+#langBtn{position:fixed;right:16px;top:16px;width:200px;z-index:45;background:rgba(30,32,40,.85);color:#ffe08a;border:1px solid rgba(255,215,130,.35);border-radius:10px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit}
+#langBtn:hover{background:rgba(50,52,62,.9)}
+#side{position:fixed;right:16px;top:68px;display:none;flex-direction:column;gap:10px;width:200px;z-index:5}
+#side button,#side label{background:rgba(30,32,40,.85);color:#eee;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;font-size:14px;cursor:pointer;text-align:center;display:flex;justify-content:center;align-items:center;gap:6px;font-family:inherit}
+#side button:hover,#side label:hover{background:rgba(50,52,62,.9)}
+#side button.on{background:#ffb84d;color:#222}
+#status{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:8px 20px;border-radius:20px;font-size:15px;white-space:nowrap;display:none;z-index:5}
+#cam{position:fixed;left:16px;bottom:16px;width:200px;height:112px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.15);background:#000;display:none;z-index:5}
+#cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.75}
+#toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,30,.9);border:1px solid rgba(255,215,130,.35);padding:10px 22px;border-radius:22px;font-size:15px;opacity:0;transition:all .3s;pointer-events:none;z-index:30;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* 日历卡片 */
+#card{position:fixed;left:50%;top:50%;width:min(28vw,44vh);background:#fff;padding:12px 12px 0;border-radius:4px;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 40px rgba(255,220,140,.25);transform:translate(-50%,-50%) scale(.3) rotate(-10deg);opacity:0;transition:transform .5s cubic-bezier(.2,1.5,.4,1),opacity .35s;pointer-events:none;z-index:15}
+#card.show{transform:translate(-50%,-50%) scale(1) rotate(-2deg);opacity:1}
+#card .ph{width:100%;aspect-ratio:1/1;overflow:hidden;background:#ddd}
+#card img{width:100%;height:100%;object-fit:cover;display:block}
+#cardCap{color:#333;font-size:15px;text-align:center;padding:12px 6px 14px;line-height:1.5}
+/* 开始页 */
+#start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:radial-gradient(ellipse at center,#0d1430 0%,#03040c 70%);z-index:40}
+#start h1{font-size:40px;letter-spacing:2px}
+#start p{color:#aaa;font-size:15px}
+#start button{font-size:20px;padding:14px 40px;border-radius:30px;border:none;background:linear-gradient(135deg,#d7263d,#a10f2b);color:#fff;cursor:pointer;box-shadow:0 0 30px rgba(215,38,61,.5);font-family:inherit}
+/* Are you ready 弹窗 */
+#ready{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:25;background:rgba(0,0,0,.35)}
+#ready.show{display:flex}
+.cane{padding:10px;border-radius:28px;background:repeating-linear-gradient(45deg,#fff 0 14px,#d7263d 14px 28px);box-shadow:0 0 60px rgba(255,210,120,.35);animation:pop .6s cubic-bezier(.2,1.5,.4,1)}
+@keyframes pop{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.rbox{position:relative;width:min(580px,90vw);max-height:88vh;overflow-y:auto;background:radial-gradient(ellipse at top,#c8183a,#7d0a20 75%);border-radius:20px;padding:34px 38px 26px;overflow:hidden}
+.rbox .deco{position:absolute;font-size:34px}
+.rbox h2{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:50px;text-align:center;color:#ffd978;text-shadow:0 0 18px rgba(255,210,100,.8),0 2px 0 #7a4a00;margin-bottom:16px}
+.rbox ul{list-style:none;font-size:15.5px;line-height:2;color:#fff3e6;background:rgba(0,0,0,.18);border-radius:12px;padding:10px 16px}
+.rbox .go{text-align:center;font-size:24px;color:#ffe08a;margin-top:18px;font-weight:600;animation:breath 1.4s ease-in-out infinite}
+.rbox .go span{display:inline-block;animation:clap .7s ease-in-out infinite}
+@keyframes breath{50%{opacity:.7}}
+@keyframes clap{50%{transform:scale(1.35) rotate(-10deg)}}
+.clapTip{text-align:center;color:#ffd9d9;font-size:13px;margin-top:6px}
+#clapMeter{display:flex;align-items:center;gap:10px;justify-content:center;margin-top:10px;font-size:13px;color:#fff}
+#clapMeter .bar{width:180px;height:8px;border-radius:4px;background:rgba(255,255,255,.2);overflow:hidden}
+#clapMeter i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffe08a,#fff);transition:width .08s}
+#banner{position:fixed;left:50%;top:14px;transform:translateX(-50%);display:none;align-items:center;gap:18px;z-index:6;white-space:nowrap}
+#banner .txt{color:#ffe9b0;font-size:16px;text-shadow:0 0 12px rgba(255,200,100,.7)}
+/* 可以用一根手指“停留”点击的按钮：外圈是进度环 */
+.dwell{--p:0;position:relative;border:none;cursor:pointer;font-family:inherit;border-radius:40px;padding:3px;background:conic-gradient(#ffe08a calc(var(--p)*1turn),rgba(255,255,255,.25) 0)}
+.dwell span{display:flex;align-items:center;gap:8px;border-radius:40px;background:linear-gradient(135deg,#c8183a,#8a0c24);color:#fff;font-size:17px;font-weight:600;padding:12px 26px;box-shadow:0 0 22px rgba(255,80,100,.45)}
+.dwell.hot span{background:linear-gradient(135deg,#e0244a,#a8102e);transform:scale(1.04)}
+.dwell small{font-weight:400;font-size:12px;opacity:.75}
+/* 最终贺卡 */
+#greet{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:28;pointer-events:none}
+#greet.show{display:flex}
+#greet .gcard{pointer-events:auto;width:min(620px,88vw);padding:10px;border-radius:26px;background:linear-gradient(135deg,#f4d27a,#fff3c4,#d9a93a);box-shadow:0 0 80px rgba(255,210,120,.55);animation:gpop .9s cubic-bezier(.2,1.5,.4,1)}
+@keyframes gpop{from{transform:scale(.3) rotate(-8deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+#greet .gin{position:relative;overflow:hidden;border-radius:18px;background:radial-gradient(ellipse at top,#c8183a,#6e0819 80%);padding:40px 34px 30px;text-align:center}
+#greet .en{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-size:58px;color:#ffd978;text-shadow:0 0 22px rgba(255,210,100,.9),0 2px 0 #7a4a00}
+#greet .zh{font-size:28px;color:#fff;margin-top:14px;letter-spacing:2px;line-height:1.6;text-shadow:0 2px 8px rgba(0,0,0,.35)}
+#greet .row{font-size:38px;margin:10px 0 4px}
+#greet .gfoot{margin-top:22px;display:flex;justify-content:center}
+#greet .dwell span{background:linear-gradient(135deg,#1f7a3a,#0f5a28);box-shadow:0 0 22px rgba(80,220,120,.4)}
+.rbox .alt{text-align:center;margin-top:12px}
+.rbox .alt button{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:16px;padding:6px 16px;font-size:13px;cursor:pointer;font-family:inherit}
+.flake{position:absolute;color:#fff;opacity:.7;animation:fall linear infinite;pointer-events:none}
+@keyframes fall{from{transform:translateY(-30px)}to{transform:translateY(560px)}}
+input[type=file]{display:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="start">
+  <h1 data-i18n="title"></h1>
+  <p data-i18n="startP"></p>
+  <button id="startBtn" data-i18n="startBtn"></button>
+  <p style="font-size:13px;color:#777" data-i18n="startNoCam"></p>
+</div>
+
+<div id="help">
+  <h3 data-i18n="titleH"></h3>
+  <div data-i18n="h1"></div><div data-i18n="h2"></div><div data-i18n="h3"></div><div data-i18n="h4"></div><div data-i18n="h5"></div>
+  <div class="k" data-i18n="hk"></div>
+</div>
+
+<div id="side">
+  <button id="photoBtn" data-i18n="photoBtn"></button>
+  <button id="txtBtn" data-i18n="txtBtn"></button>
+</div>
+<input type="file" id="photoIn" accept="image/*" multiple>
+<input type="file" id="txtIn" accept=".txt,text/plain">
+
+<button id="langBtn"></button>
+<div id="status"></div>
+<div id="banner"><div class="txt" data-i18n="banner"></div>
+  <button class="dwell" id="skipBtn"><span data-i18n="skip"></span></button></div>
+<div id="greet"><div class="gcard"><div class="gin" id="gin">
+  <div class="row">🎄 ⭐ 🎁</div>
+  <div class="en">Merry Christmas</div>
+  <div class="zh" data-i18n="greetZh"></div>
+  <div class="gfoot"><button class="dwell" id="greetBtn"><span data-i18n="greetBtn"></span></button></div>
+</div></div></div>
+<div id="cam"><video id="video" playsinline muted></video></div>
+<div id="toast"></div>
+<div id="card"><div class="ph"><img id="cardImg" alt=""></div><div id="cardCap"></div></div>
+
+<div id="ready">
+  <div class="cane"><div class="rbox" id="rbox">
+    <div class="deco" style="left:14px;top:10px">🔔</div>
+    <div class="deco" style="right:14px;top:10px">🎄</div>
+    <h2>Are you ready?</h2>
+    <ul>
+      <li data-i18n="r1"></li><li data-i18n="r2"></li><li data-i18n="r3"></li>
+      <li data-i18n="r4"></li><li data-i18n="r5"></li><li data-i18n="r6"></li>
+    </ul>
+    <div class="go"><b data-i18n="go"></b> <span>👏</span></div>
+    <div class="clapTip" data-i18n="clapTip"></div>
+    <div id="clapMeter"><div id="clapSeen"></div><div class="bar"><i id="clapBar"></i></div></div>
+    <div class="alt"><button id="readyBtn" data-i18n="readyBtn"></button></div>
+  </div></div>
+</div>
+
+<script type="module">
+const $ = s => document.querySelector(s);
+const TAU = Math.PI * 2;
+const cv = $('#c'), ctx = cv.getContext('2d');
+const video = $('#video');
+let W = 0, H = 0, dpr = 1, S = 1;
+let state = 'start';            // start → scatter → intro → ready → play
+let introCount = 0, introEnding = false;
+let charge = 0, spin = 0, endPhase = 'tree', exploding = false, endOpen = false, fbWasHeld = false;
+let gather = 0, holdGather = false, starBoost = 0, T = 0, lastFrame = performance.now();
+let readyShownAt = 0;
+
+
+/* ---------------- 中英文 ---------------- */
+const I18N = {
+  zh: {
+    langBtn: '🌐 English', title: '🎄 圣诞钢琴日历树', titleH: '🎹 圣诞钢琴日历树',
+    startP: '用电脑 Chrome 打开，点下面的按钮，允许使用摄像头', startBtn: '开始 ✨', startNoCam: '没有摄像头也能玩：按住鼠标聚树，点琴键弹奏',
+    h1: '✋ 食指、中指、无名指往下弯，就能按琴键（左低音，右高音）', h2: '✨ 跟着发光的琴键弹，同色彩球会一起亮', h3: '🎁 每弹完一句，打开一天惊喜日历（13–24 天）',
+    h4: '👋👋 双手一起向下拍 3 次：树自己演奏 / 停止', h5: '❄️ 手在屏幕最顶部晃一晃：下雪',
+    hk: '键盘：S 跳过开场 · A 自动演奏 · H 隐藏/显示提示 · V 摄像头 · F 全屏 · [ ] 调手指灵敏度',
+    photoBtn: '📷 选择照片', txtBtn: '📝 导入祝福 txt',
+    banner: '🎶 圣诞树正在为你演奏…看完 12 天日历，就轮到你啦', skip: '☝️ 跳过开场 ⏭ <small>手指停在这里 / 点击 / S</small>',
+    greetZh: '圣诞快乐<br>感谢你陪我度过的这一年', greetBtn: '☝️ 结束 🎄 <small>手指停在这里 / 点击</small>',
+    end1: '✊✊ 握紧双拳，把这一年的回忆攥在手心', end1s: '握得越久，圣诞树转得越快、越亮', end2: '🖐🖐 张开双手，把回忆撒向夜空！',
+    end3: '✊✊ 再握拳，把星光聚回圣诞树', end3s: '张开、握拳，可以一直玩下去', endAlt: '没有摄像头？按住鼠标或 G 键 = 握拳，松开 = 张开',
+    r1: '🎹 两边是钢琴键盘：左边低音，右边高音', r2: '✋ 手放在琴键上方，食指、中指、无名指像弹琴一样往下弯，就会出声',
+    r3: '✨ 跟着发光的琴键弹，树上同色的彩球也会一起亮', r4: '🎁 前 12 天树已经帮你开好了，每弹完一句，再开一天（13–24）',
+    r5: '👋👋 双手一起向下拍 3 次：让树自己演奏，再拍 3 次停下', r6: '❄️ 手在屏幕最顶部晃一晃：会下雪',
+    go: '准备好啦，就拍拍手', clapTip: '先把两只手张开放到镜头前，再用力拍一下', readyBtn: '没摄像头？点这里或按空格开始',
+    seen0: '👀 还没看到手', seen1: '👀 只看到一只手', seen2: '👀 看到两只手，先张开', seenOpen: '👐 张开了，拍！',
+    low: '低音区 · C4–B4', high: '高音区 · C5–B5',
+    gatherNoHand: '🙌 把双手举到摄像头前', gather: '✊ ✊  双手握拳，把星光聚成圣诞树', gatherAlt: '没有摄像头？按住鼠标或 G 键',
+    day: d => `第 ${d} 天 · `, recap: d => `🎄 回顾 · 第 ${d} 天 · `,
+    noCam: '没拿到摄像头，可以按住鼠标聚树、点琴键弹奏', loading: '正在加载手势识别…', loaded: '手势识别好啦 ✋ 双手握拳试试', loadFail: '手势模型加载失败，先用鼠标玩吧',
+    slap: n => `👋👋 拍了 ${n}/3 下`, nextSong: n => `🎵 下一首：《${n}》`,
+    autoOn: '▶ 树自己演奏啦（双手再拍 3 次停下）', autoOff: '⏸ 停下了，换你来弹 🎹', go2: '开始！跟着发光的琴键弹 🎹',
+    stIntro: (n, c) => `🎶 开场演奏 · 《${n}》 · 🎁 第 ${c}/12 天`,
+    stPlay: (n, p, tot, a, o) => `🎄 《${n}》 第 ${p}/${tot} 句 · ${a ? '▶ 自动演奏中' : '🎹 跟弹'} · 🎁 已开 ${o}/24`,
+    photos: n => `📷 已换成你的 ${n} 张照片`, wishes: n => `📝 导入了 ${n} 条祝福`,
+  },
+  en: {
+    langBtn: '🌐 中文', title: '🎄 Christmas Piano Advent Tree', titleH: '🎹 Christmas Piano Advent Tree',
+    startP: 'Open in Chrome on a computer, click the button below and allow the camera', startBtn: 'Start ✨', startNoCam: 'No camera? Hold the mouse to grow the tree, click keys to play',
+    h1: '✋ Bend your index, middle or ring finger to press a key (left low, right high)', h2: '✨ Follow the glowing key — the same-coloured bauble lights up too', h3: '🎁 Finish a phrase to open one advent day (days 13–24)',
+    h4: '👋👋 Slap down with both hands 3 times: autoplay on / off', h5: '❄️ Wave a hand at the very top of the screen: snow',
+    hk: 'Keys: S skip intro · A autoplay · H show/hide tips · V camera · F fullscreen · [ ] finger sensitivity',
+    photoBtn: '📷 Choose photos', txtBtn: '📝 Import wishes .txt',
+    banner: '🎶 The tree is playing for you… after 12 days it’s your turn', skip: '☝️ Skip intro ⏭ <small>hold a finger here / click / S</small>',
+    greetZh: 'Thank you for spending<br>this year with me', greetBtn: '☝️ Finish 🎄 <small>hold a finger here / click</small>',
+    end1: '✊✊ Clench both fists — hold this year’s memories tight', end1s: 'The longer you hold, the faster and brighter the tree spins', end2: '🖐🖐 Now open your hands — scatter the memories into the sky!',
+    end3: '✊✊ Make fists again to gather the stars into a tree', end3s: 'Open, clench — play as long as you like', endAlt: 'No camera? Hold the mouse or G = fist, release = open',
+    r1: '🎹 A piano on each side: low notes on the left, high on the right', r2: '✋ Hover over the keys and bend your index, middle or ring finger like playing a real piano',
+    r3: '✨ Follow the glowing key — the same-coloured bauble on the tree lights up too', r4: '🎁 The tree already opened days 1–12; each phrase you play opens the next day (13–24)',
+    r5: '👋👋 Slap down with both hands 3 times to let the tree play; 3 more times to stop', r6: '❄️ Wave a hand at the very top of the screen: snow',
+    go: 'Ready? Give a clap', clapTip: 'Open both hands in front of the camera, then clap firmly', readyBtn: 'No camera? Click here or press Space',
+    seen0: '👀 No hands yet', seen1: '👀 Only one hand', seen2: '👀 Both hands seen — open them first', seenOpen: '👐 Open — now clap!',
+    low: 'Low · C4–B4', high: 'High · C5–B5',
+    gatherNoHand: '🙌 Raise both hands in front of the camera', gather: '✊ ✊  Make two fists to gather the stars into a tree', gatherAlt: 'No camera? Hold the mouse or the G key',
+    day: d => `Day ${d} · `, recap: d => `🎄 Recap · Day ${d} · `,
+    noCam: 'No camera — hold the mouse to grow the tree and click keys to play', loading: 'Loading hand tracking…', loaded: 'Hand tracking ready ✋ Make two fists', loadFail: 'Hand model failed to load — try the mouse',
+    slap: n => `👋👋 Slap ${n}/3`, nextSong: n => `🎵 Next: “${n}”`,
+    autoOn: '▶ The tree is playing (slap 3 times to stop)', autoOff: '⏸ Stopped — your turn 🎹', go2: 'Go! Follow the glowing keys 🎹',
+    stIntro: (n, c) => `🎶 Intro · “${n}” · 🎁 Day ${c}/12`,
+    stPlay: (n, p, tot, a, o) => `🎄 “${n}” phrase ${p}/${tot} · ${a ? '▶ Autoplay' : '🎹 Your turn'} · 🎁 Opened ${o}/24`,
+    photos: n => `📷 Using your ${n} photos`, wishes: n => `📝 Imported ${n} wishes`,
+  },
+};
+let lang = 'zh';
+try { if (localStorage.getItem('xmasLang') === 'en') lang = 'en'; } catch (e) {}
+const t = (k, ...a) => { const v = I18N[lang][k]; return typeof v === 'function' ? v(...a) : v; };
+function applyLang() {
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  document.title = t('title').replace('🎄 ', '');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.innerHTML = t(el.dataset.i18n); });
+  $('#langBtn').textContent = t('langBtn');
+  if (boards[0]) { boards[0].label = t('low'); boards[1].label = t('high'); }
+  if (!customWishes) wishes = (lang === 'zh' ? DEFAULT_WISH : DEFAULT_WISH_EN).slice();
+  if (!$('#clapSeen').textContent || state !== 'ready') $('#clapSeen').textContent = t('seen0');
+  updateStatus();
+}
+
+/* ---------------- 音符 / 琴键 ---------------- */
+const NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const SOLF = {C:'do',D:'re',E:'mi',F:'fa',G:'sol',A:'la',B:'si'};
+const PC_COLOR = ['#ff4d5e','#ff6a48','#ff9a3c','#ffb93b','#ffd84a','#5fd36a','#36d4a6','#36c6dc','#4aa8ff','#6f86ff','#a77bff','#f06bc0'];
+const keys = [];
+for (let m = 60; m <= 83; m++) {
+  const pc = m % 12, name = NAMES[pc];
+  keys.push({ midi: m, pc, name, oct: Math.floor(m / 12) - 1, black: name.includes('#'), color: PC_COLOR[pc], side: m < 72 ? 0 : 1, flash: 0, r: null });
+}
+const keyByMidi = m => keys.find(k => k.midi === m);
+const toMidi = s => { const mm = s.match(/^([A-G]#?)(\d)$/); return (parseInt(mm[2]) + 1) * 12 + NAMES.indexOf(mm[1]); };
+
+/* 彩球：24 个，对应 24 个键，音越高球越高 */
+const balls = keys.map((k, i) => {
+  const b = { key: k, h: 0.9 - (i / 23) * 0.74 + (Math.random() - .5) * 0.03, a: i * 2.39996, glow: 0, x: 0, y: 0, z: 0 };
+  k.ball = b; return b;
+});
+
+/* ---------------- 歌曲（分句）---------------- */
+const P = arr => arr.map(([n, d]) => ({ midi: toMidi(n), d }));
+const songs = [
+  { name: 'Jingle Bells', zh: '铃儿响叮当', phrases: [
+    P([['E4',1],['E4',1],['E4',2],['E4',1],['E4',1],['E4',2]]),
+    P([['E4',1],['G4',1],['C4',1.5],['D4',.5],['E4',4]]),
+    P([['F4',1],['F4',1],['F4',1.5],['F4',.5],['F4',1],['E4',1],['E4',1]]),
+    P([['E4',.5],['E4',.5],['D4',1],['D4',1],['E4',1],['D4',2],['G4',2]]),
+    P([['E4',1],['E4',1],['E4',2],['E4',1],['E4',1],['E4',2]]),
+    P([['E4',1],['G4',1],['C4',1.5],['D4',.5],['E4',4]]),
+    P([['F4',1],['F4',1],['F4',1.5],['F4',.5],['F4',1],['E4',1],['E4',1]]),
+    P([['E4',1],['G4',1],['G4',1],['F4',1],['D4',1],['C4',4]]),
+  ]},
+  { name: 'We Wish You a Merry Christmas', zh: '我们祝你圣诞快乐', phrases: [
+    P([['G4',1],['C5',1],['C5',.5],['D5',.5],['C5',.5],['B4',.5],['A4',1],['A4',1]]),
+    P([['A4',1],['D5',1],['D5',.5],['E5',.5],['D5',.5],['C5',.5],['B4',1],['G4',1]]),
+    P([['G4',1],['E5',1],['E5',.5],['F5',.5],['E5',.5],['D5',.5],['C5',1],['A4',1]]),
+    P([['G4',.5],['G4',.5],['A4',1],['D5',1],['B4',1],['C5',3]]),
+  ]},
+];
+const sname = s => lang === 'zh' ? s.zh : s.name;
+let songIdx = 0, phraseIdx = 0, noteIdx = 0;
+const BEAT = 0.4;
+const curNote = () => songs[songIdx].phrases[phraseIdx][noteIdx];
+const nextNote = () => {
+  const ph = songs[songIdx].phrases[phraseIdx];
+  if (noteIdx + 1 < ph.length) return ph[noteIdx + 1];
+  const np = songs[songIdx].phrases[phraseIdx + 1];
+  return np ? np[0] : songs[(songIdx + 1) % songs.length].phrases[0][0];
+};
+
+/* ---------------- 日历 ---------------- */
+const DEFAULT_WISH = ['今天也要好好吃饭 🍜','给自己泡一杯热可可 ☕','给想念的人发一条消息 💌','早点睡，梦里会下雪 🌙','出门晒十分钟太阳 ☀️','听一首最爱的歌 🎧','夸夸今天的自己 ✨','整理一下书桌，心情也会变亮 🧹','吃一块甜甜的点心 🍪','拍一张今天的天空 ☁️','给家里打个电话 📞','记得多喝水 💧','做一件拖了很久的小事 ✅','对着镜子笑一下 😊','换上最暖和的毛衣 🧶','把手机放下，散步十分钟 🚶','写下三件今天开心的事 📝','去超市买一样没吃过的零食 🛒','给朋友一个拥抱 🤗','看一部温暖的电影 🎬','冬至快乐，吃点热乎的 🥟','许一个小小的愿望 ⭐','把礼物包好，明天就是平安夜 🎀','平安夜快乐，圣诞快乐！🎄'];
+const DEFAULT_WISH_EN = ['Have a proper meal today 🍜','Make yourself a hot chocolate ☕','Message someone you miss 💌','Sleep early — it might snow in your dreams 🌙','Get ten minutes of sunshine ☀️','Listen to your favourite song 🎧','Give yourself a compliment ✨','Tidy your desk and brighten your mood 🧹','Treat yourself to something sweet 🍪','Take a photo of today’s sky ☁️','Call home 📞','Remember to drink water 💧','Finish one small task you’ve been putting off ✅','Smile at yourself in the mirror 😊','Wear your cosiest jumper 🧶','Put your phone down and walk for ten minutes 🚶','Write down three happy things from today 📝','Buy a snack you’ve never tried 🛒','Give a friend a hug 🤗','Watch a heart-warming film 🎬','Happy winter solstice — eat something warm 🥟','Make a little wish ⭐','Wrap the presents — Christmas Eve is tomorrow 🎀','Merry Christmas Eve, and Merry Christmas! 🎄'];
+let wishes = DEFAULT_WISH.slice(), customWishes = null;
+let photos = [];
+let opened = 12, recapIdx = 0;
+const defaultImgCache = {};
+function defaultImg(day) {
+  if (defaultImgCache[day]) return defaultImgCache[day];
+  const c = document.createElement('canvas'); c.width = c.height = 600;
+  const g = c.getContext('2d');
+  const h1 = (day * 37) % 360, h2 = (h1 + 70) % 360;
+  const gr = g.createLinearGradient(0, 0, 600, 600);
+  gr.addColorStop(0, `hsl(${h1},70%,60%)`); gr.addColorStop(1, `hsl(${h2},65%,42%)`);
+  g.fillStyle = gr; g.fillRect(0, 0, 600, 600);
+  for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * .35})`; g.beginPath(); g.arc(Math.random() * 600, Math.random() * 600, Math.random() * 5 + 1, 0, TAU); g.fill(); }
+  g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.shadowColor = 'rgba(0,0,0,.25)'; g.shadowBlur = 20;
+  g.font = 'bold 250px -apple-system,Helvetica,Arial,sans-serif'; g.fillText(String(day), 300, 250);
+  g.shadowBlur = 0; g.font = '110px serif'; g.fillText('🎁', 300, 480);
+  return (defaultImgCache[day] = c.toDataURL('image/jpeg', .9));
+}
+let cardTimer = null;
+function showCard(day, recap) {
+  $('#cardImg').src = photos.length ? photos[(day - 1) % photos.length] : defaultImg(day);
+  $('#cardCap').textContent = (recap ? t('recap', day) : t('day', day)) + (wishes[day - 1] || DEFAULT_WISH[day - 1]);
+  const el = $('#card'); el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  clearTimeout(cardTimer); cardTimer = setTimeout(() => el.classList.remove('show'), 2000);
+}
+function openNextDay() {
+  starBoost = 1;
+  if (state === 'intro') {
+    introCount++; showCard(introCount, false); updateStatus();
+    if (introCount >= 12) endIntro();
+    return;
+  }
+  if (opened >= 24) { recapIdx = recapIdx % 24 + 1; showCard(recapIdx, true); return; }
+  const day = opened + 1;
+  opened = day; showCard(day, false);
+  if (opened === 24) setTimeout(showGreeting, 2300);
+}
+
+/* ---------------- 声音 ---------------- */
+let ac = null, master = null;
+function initAudio() {
+  if (ac) return;
+  ac = new (window.AudioContext || window.webkitAudioContext)();
+  const comp = ac.createDynamicsCompressor();
+  master = ac.createGain(); master.gain.value = .8;
+  const dl = ac.createDelay(); dl.delayTime.value = .23;
+  const fb = ac.createGain(); fb.gain.value = .28;
+  const wet = ac.createGain(); wet.gain.value = .22;
+  master.connect(comp); master.connect(dl); dl.connect(fb); fb.connect(dl); dl.connect(wet); wet.connect(comp);
+  comp.connect(ac.destination);
+}
+function playNote(midi, vel = 1) {
+  if (!ac) return;
+  const t = ac.currentTime, f = 440 * Math.pow(2, (midi - 69) / 12);
+  [[1, .5, 1.6], [2, .22, .9], [3, .07, .5], [4.16, .06, .35]].forEach(([mul, amp, dec]) => {
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.value = f * mul;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(amp * .45 * vel, t + .004);
+    g.gain.exponentialRampToValueAtTime(.0001, t + dec);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dec + .05);
+  });
+}
+
+/* ---------------- 布局 ---------------- */
+const boards = [{}, {}];
+const tree = { cx: 0, top: 0, bottom: 0, R: 0 };
+function layout() {
+  W = innerWidth; H = innerHeight; dpr = Math.min(devicePixelRatio || 1, 2); S = H / 900;
+  cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const kbW = Math.min(W * .27, H * .62), kbH = Math.min(H * .3, kbW * .56), y0 = Math.max(H * .4, 380);
+  boards[0] = { x: W * .215 - kbW / 2, y: y0, w: kbW, h: kbH, label: t('low') };
+  boards[1] = { x: W * .81 - kbW / 2, y: y0, w: kbW, h: kbH, label: t('high') };
+  tree.cx = W / 2; tree.top = H * .2; tree.bottom = H * .87; tree.R = Math.min(W * .12, H * .27);
+  boards.forEach((b, side) => {
+    const ks = keys.filter(k => k.side === side), whites = ks.filter(k => !k.black);
+    const ww = b.w / whites.length, kh = b.h;
+    whites.forEach((k, i) => k.r = { x: b.x + i * ww + 2, y: b.y, w: ww - 4, h: kh });
+    ks.filter(k => k.black).forEach(k => {
+      const left = keyByMidi(k.midi - 1);
+      k.r = { x: left.r.x + left.r.w + 2 - ww * .3, y: b.y, w: ww * .6, h: kh * .6 };
+    });
+  });
+}
+addEventListener('resize', layout);
+function hitKey(x, y) {
+  for (const k of keys) if (k.black && k.r && x >= k.r.x && x <= k.r.x + k.r.w && y >= k.r.y && y <= k.r.y + k.r.h) return k;
+  for (const k of keys) if (!k.black && k.r && x >= k.r.x && x <= k.r.x + k.r.w && y >= k.r.y && y <= k.r.y + k.r.h) return k;
+  return null;
+}
+
+/* ---------------- 粒子 ---------------- */
+const parts = [];
+(function makeParticles() {
+  for (let i = 0; i < 2300; i++) {
+    const hue = 115 + Math.random() * 40, l = 32 + Math.random() * 30;
+    parts.push({ sx: Math.random(), sy: Math.random(), ph: Math.random() * TAU, h: Math.sqrt(Math.random()), a: Math.random() * TAU, rf: Math.pow(Math.random(), .45), col: `hsl(${hue},70%,${l}%)`, sz: 1.2 + Math.random() * 1.3, d: Math.random(), tw: 0 });
+  }
+  for (let i = 0; i < 560; i++) {
+    const s = i / 560;
+    parts.push({ sx: Math.random(), sy: Math.random(), ph: Math.random() * TAU, h: .04 + s * .94, a: s * TAU * 6.5 + (Math.random() - .5) * .08, rf: 1.03, col: `hsl(${42 + Math.random() * 10},100%,${62 + Math.random() * 15}%)`, sz: 1.4 + Math.random(), d: Math.random(), tw: 0 });
+  }
+  const sc = ['#ffffff', '#ffe08a', '#ff6b7a', '#9fd8ff'];
+  for (let i = 0; i < 200; i++) {
+    parts.push({ sx: Math.random(), sy: Math.random(), ph: Math.random() * TAU, h: Math.sqrt(Math.random()), a: Math.random() * TAU, rf: .85 + Math.random() * .2, col: sc[i % 4], sz: 2 + Math.random() * 1.5, d: Math.random(), tw: Math.random() * TAU });
+  }
+})();
+const flakes = [];
+function spawnSnow(n, x, y) {
+  for (let i = 0; i < n && flakes.length < 700; i++)
+    flakes.push({ x: x ?? Math.random() * W, y: y ?? -10, vx: (Math.random() - .5) * 30, vy: 30 + Math.random() * 50, r: 1 + Math.random() * 2.5, ph: Math.random() * TAU });
+}
+const trails = [];
+
+/* ---------------- 手势 ---------------- */
+let landmarker = null, lastVideoTime = -1;
+const hands = {};
+const pointers = {};
+let clap = { farT: 0, closeT: 0, lastD: 9, bothT: 0 }, slapCount = 0, slapFirst = 0, lastSlapUsed = 0;
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function isOpenHand(p) {
+  let c = 0;
+  [[8, 6], [12, 10], [16, 14], [20, 18]].forEach(([t, j]) => { if (dist(p[t], p[0]) > dist(p[j], p[0]) * 1.15) c++; });
+  return c >= 3;
+}
+function isFist(p) {
+  let c = 0;
+  [[8, 6], [12, 10], [16, 14], [20, 18]].forEach(([t, j]) => { if (dist(p[t], p[0]) < dist(p[j], p[0])) c++; });
+  return c >= 3;
+}
+async function initHands() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720, frameRate: { ideal: 60 }, facingMode: 'user' }, audio: false });
+    video.srcObject = stream; await video.play();
+    $('#cam').style.display = 'block';
+  } catch (e) { toast(t('noCam')); return; }
+  try {
+    toast(t('loading'));
+    const V = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
+    const vision = await import(V + '/vision_bundle.mjs');
+    const fs = await vision.FilesetResolver.forVisionTasks(V + '/wasm');
+    const opts = d => ({ baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate: d }, runningMode: 'VIDEO', numHands: 2 });
+    try { landmarker = await vision.HandLandmarker.createFromOptions(fs, opts('GPU')); }
+    catch (e) { landmarker = await vision.HandLandmarker.createFromOptions(fs, opts('CPU')); }
+    toast(t('loaded'));
+  } catch (e) { console.error(e); toast(t('loadFail')); }
+}
+function detect(now) {
+  if (!landmarker || video.readyState < 2 || video.currentTime === lastVideoTime) return;
+  lastVideoTime = video.currentTime;
+  let res; try { res = landmarker.detectForVideo(video, now); } catch (e) { return; }
+  const seen = new Set();
+  (res.landmarks || []).forEach((lm, i) => {
+    let label = (res.handednesses && res.handednesses[i] && res.handednesses[i][0] && res.handednesses[i][0].categoryName) || ('H' + i);
+    if (seen.has(label)) label += '2';
+    seen.add(label);
+    const pts = lm.map(p => ({ x: (1 - p.x) * W, y: p.y * H }));
+    const ar = (video.videoWidth / video.videoHeight) || 1.78;
+    const raw = lm.map(p => ({ x: p.x * ar, y: p.y, z: (p.z || 0) * ar }));
+    let h = hands[label];
+    if (!h || !h.alive || now - h.t > 300) {
+      h = hands[label] = { label, pts, raw, t: now, vy: 0, vx: 0, wvy: 0, alive: true, slapArmed: true, slapT: 0 };
+      return;
+    }
+    const dt = Math.max(.001, (now - h.t) / 1000);
+    const oTip = { ...h.pts[8] }, oWr = { ...h.pts[0] };
+    h.pts.forEach((p, j) => { p.x += (pts[j].x - p.x) * .6; p.y += (pts[j].y - p.y) * .6; });
+    const vy = (h.pts[8].y - oTip.y) / H / dt, vx = (h.pts[8].x - oTip.x) / W / dt, wvy = (h.pts[0].y - oWr.y) / H / dt;
+    h.vy = h.vy * .4 + vy * .6; h.vx = h.vx * .4 + vx * .6; h.wvy = h.wvy * .3 + wvy * .7;
+    h.raw = raw; h.t = now; h.alive = true;
+  });
+  Object.values(hands).forEach(h => { if (!seen.has(h.label)) h.alive = false; });
+  gestures(now);
+}
+function gestures(now) {
+  const live = Object.values(hands).filter(h => h.alive);
+  // 握拳聚树
+  if (state === 'scatter' || state === 'ending') holdGather = live.length >= 2 && live.every(h => isFist(h.pts));
+  if (state === 'ending') endOpen = live.length >= 1 && live.every(h => isOpenHand(h.pts));
+  // 拍手确认
+  if (state === 'ready') clapCheck(live, now);
+  if (state === 'play') live.forEach(h => fingers(h));
+  dwellCheck(live, now);
+  if (state === 'play') {
+    // 双手向下拍 3 次
+    live.forEach(h => {
+      if (h.slapArmed && h.wvy > 1.5) { h.slapT = now; h.slapArmed = false; }
+      if (h.wvy < .2) h.slapArmed = true;
+    });
+    if (live.length >= 2) {
+      const a = live[0].slapT, b = live[1].slapT;
+      if (a && b && Math.abs(a - b) < 260 && Math.min(a, b) > lastSlapUsed) {
+        lastSlapUsed = Math.max(a, b);
+        if (now - slapFirst > 2500) { slapCount = 0; slapFirst = now; }
+        slapCount++;
+        if (slapCount >= 3) { slapCount = 0; toggleAuto(); }
+        else toast(t('slap', slapCount));
+      }
+    }
+  }
+  // 顶部晃手下雪
+  live.forEach(h => { if (h.pts[8].y < H * .1 && Math.abs(h.vx) > .8) spawnSnow(5, h.pts[8].x, h.pts[8].y); });
+}
+/* 拍手：按手的大小算两掌距离（远近都准），要求“先张开、再快速合拢”；
+   两手合在一起时识别常会丢掉一只手，这种“合拢途中突然只剩一只手”也算拍手 */
+const palm = p => { let x = 0, y = 0; [0, 5, 9, 13, 17].forEach(i => { x += p[i].x; y += p[i].y; }); return { x: x / 5, y: y / 5 }; };
+const handSize = p => dist(p[0], p[9]) || 1;
+function clapCheck(live, now) {
+  if (now - readyShownAt < 700) return;
+  const seen = $('#clapSeen'), bar = $('#clapBar');
+  if (live.length >= 2) {
+    const d = dist(palm(live[0].pts), palm(live[1].pts)) / ((handSize(live[0].pts) + handSize(live[1].pts)) / 2);
+    if (d > 1.8) clap.farT = now;
+    if (d < 1.6 && d < clap.lastD - .02) clap.closeT = now;
+    clap.lastD = d; clap.bothT = now;
+    seen.textContent = clap.farT && now - clap.farT < 1500 ? t('seenOpen') : t('seen2');
+    bar.style.width = Math.max(0, Math.min(100, (2.4 - d) / 1.6 * 100)) + '%';
+    if (d < 1.0 && clap.farT && now - clap.farT < 900) return doClap();
+  } else {
+    seen.textContent = live.length ? t('seen1') : t('seen0');
+    if (clap.bothT && now - clap.bothT < 250 && now - clap.closeT < 250 && clap.lastD < 1.5 && now - clap.farT < 1100) return doClap();
+    if (!live.length) bar.style.width = '0%';
+  }
+}
+function doClap() { clap.farT = 0; clap.closeT = 0; clap.lastD = 9; startPlay(); }
+
+/* 手指停留点按钮：任意一只手的食指尖停在按钮上 0.8 秒 */
+const dwell = {};
+function dwellCheck(live, now) {
+  const targets = [];
+  if (state === 'intro' && !introEnding) targets.push(['skipBtn', () => endIntro(true)]);
+  if ($('#greet').classList.contains('show')) targets.push(['greetBtn', hideGreeting]);
+  ['skipBtn', 'greetBtn'].forEach(id => { if (!targets.find(t => t[0] === id)) { dwell[id] = 0; $('#' + id).style.setProperty('--p', 0); $('#' + id).classList.remove('hot'); } });
+  targets.forEach(([id, fn]) => {
+    const el = $('#' + id), r = el.getBoundingClientRect(), pad = 12;
+    const on = live.some(h => [8, 12].some(i => { const q = h.pts[i]; return q.x > r.left - pad && q.x < r.right + pad && q.y > r.top - pad && q.y < r.bottom + pad; }));
+    const prev = dwell[id] || 0;
+    dwell[id] = on ? prev + .033 / .8 : Math.max(0, prev - .05);
+    el.classList.toggle('hot', on);
+    el.style.setProperty('--p', Math.min(1, dwell[id]));
+    if (dwell[id] >= 1) { dwell[id] = 0; el.style.setProperty('--p', 0); fn(); }
+  });
+}
+let greetTimer = null, fwUntil = 0;
+function showGreeting() {
+  $('#greet').classList.add('show');
+  auto = false; clearTimeout(autoTimer); updateStatus();
+  fwUntil = performance.now() + 9000; starBoost = 1;
+  const gin = $('#gin');
+  if (!gin.dataset.snow) {
+    gin.dataset.snow = 1;
+    for (let i = 0; i < 22; i++) {
+      const f = document.createElement('div'); f.className = 'flake'; f.textContent = '❄';
+      f.style.left = Math.random() * 100 + '%'; f.style.top = '-20px'; f.style.fontSize = (8 + Math.random() * 12) + 'px';
+      f.style.animationDuration = (5 + Math.random() * 6) + 's'; f.style.animationDelay = (-Math.random() * 8) + 's';
+      gin.appendChild(f);
+    }
+  }
+  // 礼花音效：一串上行的铃音
+  [72, 76, 79, 84, 88].forEach((m, i) => setTimeout(() => playNote(m, .7), i * 120));
+}
+function hideGreeting() { $('#greet').classList.remove('show'); fwUntil = Math.min(fwUntil, performance.now() + 1500); startEnding(); }
+/* 结尾：握拳“攒回忆”（树越转越快、越亮、越紧），张开手就炸成满天星光；再握拳又聚回树 */
+function startEnding() {
+  if (state === 'ending') return;
+  state = 'ending'; endPhase = 'tree'; charge = 0; exploding = false;
+  auto = false; clearTimeout(autoTimer);
+  ['#help', '#status'].forEach(s => $(s).style.display = 'none');
+  $('#card').classList.remove('show');
+  [60, 64, 67, 72].forEach((m, i) => setTimeout(() => playNote(m, .6), i * 90));
+}
+function explode() {
+  endPhase = 'scatter'; exploding = true; charge = 0; starBoost = 1;
+  parts.forEach(p => { p.sx = Math.random(); p.sy = Math.random(); });
+  const th = tree.bottom - tree.top;
+  for (let i = 0; i < 6; i++) burst(tree.cx + (Math.random() - .5) * tree.R, tree.top + th * (.2 + Math.random() * .7), FW_COLORS[i % FW_COLORS.length]);
+  [96, 91, 88, 84, 79, 76, 72, 67].forEach((m, i) => setTimeout(() => playNote(m, .7), i * 70));
+  spawnSnow(80);
+}
+function endingStep(dt) {
+  const fbHeld = mouseHold || keyHold, fist = holdGather || fbHeld;
+  const fbReleased = fbWasHeld && !fbHeld; fbWasHeld = fbHeld;
+  if (endPhase === 'tree') {
+    if (fist) {
+      const before = charge; charge = Math.min(1, charge + dt / 1.4);
+      if (Math.floor(before * 8) !== Math.floor(charge * 8) && charge < 1) playNote(60 + Math.floor(charge * 8) * 2, .35);
+      if (charge >= 1 && before < 1) playNote(84, .6);
+    } else if (charge >= 1 && (endOpen || fbReleased)) explode();
+    else if (charge < 1) charge = Math.max(0, charge - dt * .8);
+  } else {
+    if (exploding) { gather = Math.max(0, gather - dt / .6); if (gather <= 0) exploding = false; }
+    else if (fist) gather = Math.min(1, gather + dt / 1.8);
+    if (!exploding && gather >= 1) { endPhase = 'tree'; charge = 0; starBoost = 1; [67, 72, 76, 79].forEach((m, i) => setTimeout(() => playNote(m, .6), i * 90)); }
+  }
+}
+function drawEndHint() {
+  let main, sub, prog;
+  if (endPhase === 'tree') { main = charge >= 1 ? t('end2') : t('end1'); sub = t('end1s'); prog = charge; }
+  else { main = t('end3'); sub = t('end3s'); prog = exploding ? 0 : gather; }
+  const y = H * .925;
+  ctx.save(); ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(255,210,120,.9)'; ctx.shadowBlur = 18;
+  ctx.font = `600 ${26 * S}px -apple-system,"PingFang SC",sans-serif`;
+  ctx.globalAlpha = endPhase === 'tree' && charge >= 1 ? .7 + .3 * Math.sin(T * 8) : .8 + .2 * Math.sin(T * 2.5);
+  ctx.fillText(main, W / 2, y);
+  ctx.shadowBlur = 0; ctx.globalAlpha = .65; ctx.font = `${14 * S}px -apple-system,"PingFang SC",sans-serif`;
+  ctx.fillText(sub + (landmarker ? '' : ' · ' + t('endAlt')), W / 2, y + 26 * S);
+  const bw = 240 * S, by = y + 38 * S;
+  ctx.globalAlpha = 1; rr(W / 2 - bw / 2, by, bw, 6 * S, 3 * S); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill();
+  if (prog > 0) { rr(W / 2 - bw / 2, by, bw * prog, 6 * S, 3 * S); ctx.fillStyle = '#ffd36b'; ctx.fill(); }
+  ctx.restore();
+}
+
+/* 礼花：从屏幕左右两侧斜向上喷射，空中炸开，再加彩纸 */
+const rockets = [], sparks = [];
+const FW_COLORS = ['#ff4d5e', '#ffd84a', '#5fd36a', '#4aa8ff', '#f06bc0', '#ffffff', '#ff9a3c', '#a77bff'];
+function launch(side) {
+  const x = side ? W + 10 : -10, y = H * (.75 + Math.random() * .2);
+  const tx = side ? W * (.55 + Math.random() * .35) : W * (.1 + Math.random() * .35), ty = H * (.12 + Math.random() * .3);
+  const t = .9 + Math.random() * .4;
+  rockets.push({ x, y, vx: (tx - x) / t, vy: (ty - y) / t, life: t, col: FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)] });
+  // 喷口彩纸
+  for (let i = 0; i < 26; i++) {
+    const ang = side ? -(Math.PI - (.35 + Math.random() * .7)) : -(.35 + Math.random() * .7);
+    const sp = (500 + Math.random() * 600) * S;
+    sparks.push({ x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, g: 520 * S, life: 1.6 + Math.random(), age: 0, col: FW_COLORS[i % FW_COLORS.length], conf: true, rot: Math.random() * TAU, vr: (Math.random() - .5) * 12 });
+  }
+}
+function burst(x, y, col) {
+  const n = 120, alt = FW_COLORS[Math.floor(Math.random() * FW_COLORS.length)];
+  for (let i = 0; i < n; i++) {
+    const a = i / n * TAU + Math.random() * .1, sp = (180 + Math.random() * 260) * S;
+    sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 90 * S, life: 1.2 + Math.random() * .6, age: 0, col: i % 3 ? col : alt, conf: false });
+  }
+  playNote(48 + Math.floor(Math.random() * 12), .25);
+}
+let fwNext = 0;
+function drawFireworks(dt, now) {
+  if (now < fwUntil && now > fwNext) { launch(0); launch(1); fwNext = now + 550 + Math.random() * 450; }
+  if (!rockets.length && !sparks.length) return;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let i = rockets.length - 1; i >= 0; i--) {
+    const r = rockets[i]; r.life -= dt; r.x += r.vx * dt; r.y += r.vy * dt;
+    ctx.fillStyle = r.col; ctx.globalAlpha = 1; ctx.beginPath(); ctx.arc(r.x, r.y, 3 * S, 0, TAU); ctx.fill();
+    sparks.push({ x: r.x, y: r.y, vx: (Math.random() - .5) * 30, vy: 40, g: 0, life: .35, age: 0, col: '#ffe9a8', conf: false });
+    if (r.life <= 0) { burst(r.x, r.y, r.col); rockets.splice(i, 1); }
+  }
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    const p = sparks[i]; p.age += dt;
+    if (p.age > p.life) { sparks.splice(i, 1); continue; }
+    p.vx *= p.conf ? .985 : .975; p.vy = p.vy * (p.conf ? .985 : .975) + p.g * dt;
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    const al = 1 - p.age / p.life;
+    ctx.globalAlpha = al; ctx.fillStyle = p.col;
+    if (p.conf) {
+      p.rot += p.vr * dt;
+      ctx.save(); ctx.globalCompositeOperation = 'source-over'; ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillRect(-4 * S, -2 * S, 8 * S, 4 * S * Math.abs(Math.cos(p.rot * 1.3)) + 1); ctx.restore();
+    } else { ctx.beginPath(); ctx.arc(p.x, p.y, 2.8 * S, 0, TAU); ctx.fill(); ctx.globalAlpha = al * .25; ctx.beginPath(); ctx.arc(p.x, p.y, 7 * S, 0, TAU); ctx.fill(); }
+  }
+  ctx.restore();
+}
+
+/* 弯指弹琴：看食指、中指、无名指的弯曲角度（3D，和手离镜头远近无关）。
+   - 每根手指有自己的“放松基准”，比基准多弯 PRESS_T 弧度算按下，回到 RELEASE_T 以内才算抬起（防抖）
+   - 按哪个键看“开始弯之前”指尖的位置，弯的时候指尖会滑，不用它
+   - 整只手上下移动不会改变弯曲角度，所以不会乱响 */
+const FINGERS = [[5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]];   // 食指、中指、无名指
+let PRESS_T = .3;   // 轻轻弯一点就算按下
+const ang3 = (a, b, c) => {
+  const ux = b.x - a.x, uy = b.y - a.y, uz = b.z - a.z, vx = c.x - b.x, vy = c.y - b.y, vz = c.z - b.z;
+  const n = Math.hypot(ux, uy, uz) * Math.hypot(vx, vy, vz) || 1;
+  return Math.acos(Math.max(-1, Math.min(1, (ux * vx + uy * vy + uz * vz) / n)));
+};
+function hitKeyLoose(x, y) {
+  for (const b of boards) {
+    if (x >= b.x && x <= b.x + b.w && y >= b.y - b.h * .3 && y <= b.y + b.h + b.h * .08)
+      return hitKey(x, Math.min(b.y + b.h - 2, Math.max(b.y + 2, y)));
+  }
+  return null;
+}
+function fingers(h) {
+  const now = h.t, r = h.raw; if (!r) return;
+  const RELEASE_T = PRESS_T * .45;
+  FINGERS.forEach(([m, pip, dip, tip], fi) => {
+    const id = h.label + fi;
+    const raw = ang3(r[m], r[pip], r[dip]) + ang3(r[pip], r[dip], r[tip]);
+    const p = pointers[id] || (pointers[id] = { curl: raw, base: raw, t: now, down: false, lastPress: 0, aimX: h.pts[tip].x, aimY: h.pts[tip].y, prog: 0, aimKey: null });
+    const dt = Math.max(.001, (now - p.t) / 1000);
+    if (dt > .3) { p.curl = raw; p.base = raw; p.t = now; p.down = false; return; }
+    p.t = now;
+    p.curl += (raw - p.curl) * .55;
+    if (p.curl < p.base) p.base += (p.curl - p.base) * .5;          // 放松时基准马上跟下来
+    else p.base += Math.min(p.curl - p.base, .25 * dt);              // 一直弯着时基准慢慢跟上去
+    const bend = p.curl - p.base, tp = h.pts[tip];
+    if (!p.down && bend < PRESS_T * .3) { p.aimX = tp.x; p.aimY = tp.y; }
+    p.aimKey = hitKeyLoose(p.aimX, p.aimY);
+    p.prog = Math.max(0, Math.min(1, bend / PRESS_T));
+    if (!p.down && bend > PRESS_T && now - p.lastPress > 110) {
+      p.down = true; p.lastPress = now;
+      const k = p.aimKey || hitKeyLoose(tp.x, tp.y);
+      if (k) pressKey(k, 'user');
+    } else if (p.down && bend < RELEASE_T) p.down = false;
+  });
+}
+
+/* ---------------- 弹奏逻辑 ---------------- */
+let auto = false, autoTimer = null;
+function pressKey(k, src) {
+  // 玩家自己弹时，只有当前该弹的那个音会响；按错不出声
+  if (src === 'user' && state === 'play' && (auto || curNote().midi !== k.midi)) return;
+  playNote(k.midi, src === 'auto' ? .85 : 1);
+  k.flash = 1; k.ball.glow = 1;
+  trails.push({ k, t: 0 });
+  if (state !== 'play' && state !== 'intro') return;
+  if ((src === 'auto') === auto && curNote().midi === k.midi) advance();
+}
+function advance() {
+  noteIdx++;
+  if (noteIdx >= songs[songIdx].phrases[phraseIdx].length) {
+    noteIdx = 0; phraseIdx++;
+    openNextDay();
+    if (phraseIdx >= songs[songIdx].phrases.length) {
+      phraseIdx = 0; songIdx = (songIdx + 1) % songs.length;
+      if (state === 'play') setTimeout(() => toast(t('nextSong', sname(songs[songIdx]))), 2100);
+    }
+  }
+  updateStatus();
+}
+function autoStep() {
+  if (!auto || introEnding) return;
+  const n = curNote();
+  const endOfPhrase = noteIdx === songs[songIdx].phrases[phraseIdx].length - 1;
+  pressKey(keyByMidi(n.midi), 'auto');
+  autoTimer = setTimeout(autoStep, (n.d * BEAT + (endOfPhrase ? BEAT * .6 : 0)) * 1000);
+}
+function toggleAuto() {
+  if (state !== 'play') return;
+  auto = !auto; clearTimeout(autoTimer);
+  if (auto) { toast(t('autoOn')); autoTimer = setTimeout(autoStep, 500); }
+  else toast(t('autoOff'));
+  updateStatus();
+}
+function updateStatus() {
+  if (state === 'intro') { $('#status').textContent = t('stIntro', sname(songs[songIdx]), introCount); return; }
+  if (state !== 'play') return;
+  const s = songs[songIdx];
+  $('#status').textContent = t('stPlay', sname(s), phraseIdx + 1, s.phrases.length, auto, opened);
+}
+function startIntro() {
+  state = 'intro'; introCount = 0; introEnding = false;
+  songIdx = 0; phraseIdx = 0; noteIdx = 0;
+  auto = true; starBoost = 1; spawnSnow(60);
+  $('#status').style.display = 'block'; $('#banner').style.display = 'flex';
+  updateStatus();
+  clearTimeout(autoTimer); autoTimer = setTimeout(autoStep, 900);
+}
+function endIntro(skip) {
+  if (state !== 'intro' || introEnding) return;
+  introEnding = true; auto = false; clearTimeout(autoTimer);
+  $('#banner').style.display = 'none';
+  setTimeout(() => {
+    state = 'ready'; readyShownAt = performance.now(); clap = { farT: 0, closeT: 0, lastD: 9, bothT: 0 };
+    $('#card').classList.remove('show');
+    $('#ready').classList.add('show');
+  }, skip ? 200 : 2600);
+}
+function startPlay() {
+  if (state !== 'ready') return;
+  state = 'play';
+  songIdx = 0; phraseIdx = 0; noteIdx = 0; auto = false; introEnding = false; opened = 12; recapIdx = 0;
+  $('#ready').classList.remove('show');
+  ['#help', '#status'].forEach(s => $(s).style.display = 'block');
+
+  starBoost = 1; spawnSnow(80);
+  toast(t('go2'));
+  updateStatus();
+}
+
+/* ---------------- 绘制 ---------------- */
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+function drawStar(x, y, a) {
+  if (a <= 0) return;
+  const s = S, pulse = (.92 + .08 * Math.sin(T * 2.2)) * (1 + starBoost * .45);
+  ctx.save(); ctx.globalAlpha = a; ctx.globalCompositeOperation = 'lighter';
+  // 外层光晕
+  const HR = 120 * s * pulse;
+  let g = ctx.createRadialGradient(x, y, 0, x, y, HR);
+  g.addColorStop(0, 'rgba(255,250,232,.85)'); g.addColorStop(.12, 'rgba(255,226,150,.5)');
+  g.addColorStop(.45, 'rgba(255,170,70,.12)'); g.addColorStop(1, 'rgba(255,140,40,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, HR, 0, TAU); ctx.fill();
+  // 两层旋转光芒
+  for (let set = 0; set < 2; set++) {
+    const n = set ? 16 : 8, rot = set ? -T * .12 : T * .2;
+    for (let i = 0; i < n; i++) {
+      const ang = rot + i * TAU / n;
+      const len = (set ? 58 : (i % 2 ? 72 : 108)) * s * pulse * (1 + .18 * Math.sin(T * 3 + i * 1.7));
+      const w = (set ? 1.1 : 2.8) * s;
+      const ex = x + Math.cos(ang) * len, ey = y + Math.sin(ang) * len;
+      const lg = ctx.createLinearGradient(x, y, ex, ey);
+      lg.addColorStop(0, `rgba(255,242,205,${set ? .35 : .65})`); lg.addColorStop(1, 'rgba(255,190,110,0)');
+      ctx.fillStyle = lg; ctx.beginPath();
+      const px = -Math.sin(ang) * w, py = Math.cos(ang) * w;
+      ctx.moveTo(x + px, y + py); ctx.lineTo(ex, ey); ctx.lineTo(x - px, y - py); ctx.closePath(); ctx.fill();
+    }
+  }
+  // 横向镜头光斑
+  const L = 170 * s * pulse;
+  g = ctx.createLinearGradient(x - L, 0, x + L, 0);
+  g.addColorStop(0, 'rgba(160,200,255,0)'); g.addColorStop(.5, 'rgba(255,248,230,.75)'); g.addColorStop(1, 'rgba(160,200,255,0)');
+  ctx.fillStyle = g; ctx.fillRect(x - L, y - 1.3 * s, 2 * L, 2.6 * s);
+  const L2 = 80 * s * pulse;
+  g = ctx.createLinearGradient(0, y - L2, 0, y + L2);
+  g.addColorStop(0, 'rgba(255,230,180,0)'); g.addColorStop(.5, 'rgba(255,248,230,.6)'); g.addColorStop(1, 'rgba(255,230,180,0)');
+  ctx.fillStyle = g; ctx.fillRect(x - 1 * s, y - L2, 2 * s, 2 * L2);
+  // 环绕小星
+  for (let i = 0; i < 6; i++) {
+    const ang = T * .6 + i * TAU / 6, rad = (40 + 6 * Math.sin(T * 1.3 + i)) * s;
+    const sx = x + Math.cos(ang) * rad, sy = y + Math.sin(ang) * rad * .55;
+    const tw = .5 + .5 * Math.sin(T * 4 + i * 2), q = (3 + 3 * tw) * s;
+    ctx.fillStyle = `rgba(255,245,215,${.4 + .6 * tw})`;
+    ctx.beginPath(); ctx.moveTo(sx, sy - q); ctx.lineTo(sx + q * .25, sy); ctx.lineTo(sx, sy + q); ctx.lineTo(sx - q * .25, sy); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(sx - q, sy); ctx.lineTo(sx, sy + q * .25); ctx.lineTo(sx + q, sy); ctx.lineTo(sx, sy - q * .25); ctx.closePath(); ctx.fill();
+  }
+  // 立体五角星
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.translate(x, y); ctx.rotate(Math.sin(T * .8) * .08);
+  const R = 21 * s * (1 + starBoost * .25), r = R * .42, pts = [];
+  for (let i = 0; i < 10; i++) { const an = -Math.PI / 2 + i * Math.PI / 5, rad = i % 2 ? r : R; pts.push([Math.cos(an) * rad, Math.sin(an) * rad]); }
+  ctx.shadowColor = 'rgba(255,200,90,1)'; ctx.shadowBlur = 32 * s;
+  ctx.beginPath(); pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath();
+  ctx.fillStyle = '#ffc93d'; ctx.fill(); ctx.shadowBlur = 0;
+  for (let i = 0; i < 10; i++) {
+    const p1 = pts[i], p2 = pts[(i + 1) % 10];
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.closePath();
+    ctx.fillStyle = i % 2 ? '#ffb31f' : '#ffe58f'; ctx.fill();
+  }
+  ctx.globalCompositeOperation = 'lighter';
+  g = ctx.createRadialGradient(0, 0, 0, 0, 0, R * .9);
+  g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(.4, 'rgba(255,250,220,.35)'); g.addColorStop(1, 'rgba(255,240,200,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, R * .9, 0, TAU); ctx.fill();
+  ctx.restore();
+}
+function drawTree() {
+  const sq = state === 'ending' && endPhase === 'tree' ? charge : 0, cy0 = (tree.top + tree.bottom) / 2;
+  const cx = tree.cx, top = cy0 - (cy0 - tree.top) * (1 - .18 * sq), bottom = cy0 + (tree.bottom - cy0) * (1 - .18 * sq);
+  const R = tree.R * (1 - .3 * sq), th = bottom - top, rot = spin;
+  tree.topNow = top;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (const p of parts) {
+    let e = Math.min(1, Math.max(0, (gather - p.d * .35) / .65)); e = e * e * (3 - 2 * e);
+    const r = p.h * R * p.rf, an = p.a + rot, z = Math.sin(an) * r;
+    const tx = cx + Math.cos(an) * r, ty = top + p.h * th + z * .16;
+    const sx = p.sx * W + Math.sin(T * .35 + p.ph) * 18, sy = p.sy * H + Math.cos(T * .3 + p.ph) * 18;
+    const jx = sq ? (Math.random() - .5) * sq * 4 * S : 0;
+    const x = sx + (tx - sx) * e + jx, y = sy + (ty - sy) * e;
+    const depth = r > 0 ? .5 + .5 * z / R : 1;
+    let al = (.35 + .65 * depth) * (.55 + .45 * e);
+    if (p.tw) al *= .45 + .55 * Math.max(0, Math.sin(T * 3 + p.tw));
+    ctx.globalAlpha = al; ctx.fillStyle = p.col;
+    const sz = p.sz * S * (.8 + .4 * depth);
+    ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+  }
+  ctx.restore();
+  // 彩球（无数字）
+  const ba = Math.max(0, (gather - .82) / .18);
+  if (ba > 0) {
+    const hint = state === 'play' && !auto ? curNote().midi : -1;
+    const list = balls.map(b => {
+      const r = b.h * R * 1.0, an = b.a + rot;
+      b.z = Math.sin(an); b.x = cx + Math.cos(an) * r; b.y = top + b.h * th + b.z * r * .16; return b;
+    }).sort((a, b) => a.z - b.z);
+    for (const b of list) {
+      const depth = .5 + .5 * b.z, rad = (6.5 + 2 * depth) * S * (1 + b.glow * .45);
+      ctx.save(); ctx.globalAlpha = ba * (.45 + .55 * depth);
+      if (b.glow > .01 || b.key.midi === hint) {
+        const gl = b.glow + (b.key.midi === hint ? .35 + .25 * Math.sin(T * 6) : 0);
+        ctx.globalCompositeOperation = 'lighter';
+        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad * 4.5);
+        g.addColorStop(0, b.key.color); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalAlpha = ba * Math.min(1, gl); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, rad * 4.5, 0, TAU); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = ba * (.45 + .55 * depth);
+      }
+      const g2 = ctx.createRadialGradient(b.x - rad * .35, b.y - rad * .35, rad * .1, b.x, b.y, rad);
+      g2.addColorStop(0, '#fff'); g2.addColorStop(.3, b.key.color); g2.addColorStop(1, 'rgba(0,0,0,.6)');
+      ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(b.x, b.y, rad, 0, TAU); ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+function drawBoards() {
+  const hint = state === 'play' && !auto ? curNote().midi : -1;
+  const nxt = state === 'play' && !auto ? nextNote().midi : -1;
+  boards.forEach(b => {
+    ctx.save();
+    rr(b.x - 12 * S, b.y - 34 * S, b.w + 24 * S, b.h + 46 * S, 16 * S);
+    ctx.fillStyle = 'rgba(10,14,30,.55)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,215,130,.35)'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.fillStyle = '#f5d68a'; ctx.font = `${14 * S}px -apple-system,"PingFang SC",sans-serif`; ctx.textAlign = 'left';
+    ctx.fillText(b.label, b.x, b.y - 12 * S);
+    ctx.restore();
+  });
+  const drawKey = k => {
+    const { x, y, w, h } = k.r, off = k.flash * 4 * S, isHint = k.midi === hint;
+    ctx.save();
+    if (isHint) { ctx.shadowColor = k.color; ctx.shadowBlur = (22 + 12 * Math.sin(T * 6)) * S; }
+    rr(x, y + off, w, h, k.black ? 4 * S : 7 * S);
+    let g = ctx.createLinearGradient(0, y, 0, y + h);
+    if (k.black) { g.addColorStop(0, '#2a2a35'); g.addColorStop(1, '#0d0d12'); }
+    else { g.addColorStop(0, '#fffdf7'); g.addColorStop(1, '#e6dfcf'); }
+    ctx.fillStyle = g; ctx.fill(); ctx.shadowBlur = 0;
+    const tint = Math.max(k.flash, isHint ? .45 + .2 * Math.sin(T * 6) : 0);
+    if (tint > 0) { ctx.globalAlpha = tint * (k.black ? 1 : .85); ctx.fillStyle = k.color; ctx.fill(); ctx.globalAlpha = 1; }
+    if (isHint) { ctx.strokeStyle = k.color; ctx.lineWidth = 3 * S; ctx.stroke(); }
+    if (!k.black) {
+      ctx.fillStyle = k.color; ctx.beginPath(); ctx.arc(x + w / 2, y + off + h - 34 * S, 5 * S, 0, TAU); ctx.fill();
+      ctx.fillStyle = '#444'; ctx.textAlign = 'center'; ctx.font = `bold ${13 * S}px -apple-system,sans-serif`;
+      ctx.fillText(k.name, x + w / 2, y + off + h - 16 * S);
+      ctx.font = `${10 * S}px -apple-system,sans-serif`; ctx.fillStyle = '#888';
+      ctx.fillText(SOLF[k.name], x + w / 2, y + off + h - 5 * S);
+      if (k.midi === nxt && !isHint) { ctx.globalAlpha = .5; ctx.strokeStyle = k.color; ctx.setLineDash([4 * S, 4 * S]); ctx.lineWidth = 2 * S; rr(x + 3, y + 3, w - 6, h - 6, 6 * S); ctx.stroke(); }
+    }
+    ctx.restore();
+    if (isHint) { // 跳动箭头
+      const ay = y - 30 * S + Math.sin(T * 7) * 5 * S, ax = x + w / 2;
+      ctx.save(); ctx.fillStyle = k.color; ctx.shadowColor = k.color; ctx.shadowBlur = 12 * S;
+      ctx.beginPath(); ctx.moveTo(ax - 9 * S, ay); ctx.lineTo(ax + 9 * S, ay); ctx.lineTo(ax, ay + 12 * S); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+  };
+  keys.filter(k => !k.black).forEach(drawKey);
+  keys.filter(k => k.black).forEach(drawKey);
+}
+function drawTrails(dt) {
+  ctx.save(); ctx.globalCompositeOperation = 'lighter';
+  for (let i = trails.length - 1; i >= 0; i--) {
+    const tr = trails[i]; tr.t += dt / .55;
+    if (tr.t >= 1 || gather < .9) { trails.splice(i, 1); continue; }
+    const k = tr.k, b = k.ball, sx = k.r.x + k.r.w / 2, sy = k.r.y + k.r.h * .3;
+    const e = 1 - Math.pow(1 - tr.t, 2), mx = (sx + b.x) / 2, my = Math.min(sy, b.y) - 60 * S;
+    const x = (1 - e) * (1 - e) * sx + 2 * (1 - e) * e * mx + e * e * b.x, y = (1 - e) * (1 - e) * sy + 2 * (1 - e) * e * my + e * e * b.y;
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 12 * S);
+    g.addColorStop(0, '#fff'); g.addColorStop(.3, k.color); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 1 - tr.t * .5; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 12 * S, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+const CONN = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+function drawHands() {
+  Object.values(hands).forEach(h => {
+    if (!h.alive) return;
+    const p = h.pts;
+    ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1.5 * S;
+    CONN.forEach(([a, b]) => { ctx.beginPath(); ctx.moveTo(p[a].x, p[a].y); ctx.lineTo(p[b].x, p[b].y); ctx.stroke(); });
+    ctx.fillStyle = 'rgba(255,255,255,.7)';
+    p.forEach(q => { ctx.beginPath(); ctx.arc(q.x, q.y, 2.5 * S, 0, TAU); ctx.fill(); });
+    ctx.globalCompositeOperation = 'lighter';
+    FINGERS.forEach(f => {
+      const tip = f[3], fi = FINGERS.indexOf(f), q = p[tip];
+      const col = '#ffe9a8', rad = 12 * S;
+      const g = ctx.createRadialGradient(q.x, q.y, 0, q.x, q.y, rad);
+      g.addColorStop(0, '#fff'); g.addColorStop(.35, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(q.x, q.y, rad, 0, TAU); ctx.fill();
+    });
+    ctx.restore();
+  });
+}
+function drawSnow(dt) {
+  if (Math.random() < dt * 6) spawnSnow(1);
+  ctx.save(); ctx.fillStyle = '#fff';
+  for (let i = flakes.length - 1; i >= 0; i--) {
+    const f = flakes[i]; f.ph += dt; f.x += (f.vx + Math.sin(f.ph * 1.5) * 15) * dt; f.y += f.vy * dt;
+    if (f.y > H + 10) { flakes.splice(i, 1); continue; }
+    ctx.globalAlpha = .75; ctx.beginPath(); ctx.arc(f.x, f.y, f.r * S, 0, TAU); ctx.fill();
+  }
+  ctx.restore();
+}
+function drawGatherHint() {
+  const live = Object.values(hands).filter(h => h.alive).length;
+  ctx.save(); ctx.textAlign = 'center'; ctx.fillStyle = '#fff';
+  ctx.shadowColor = 'rgba(255,210,120,.8)'; ctx.shadowBlur = 16;
+  ctx.font = `600 ${30 * S}px -apple-system,"PingFang SC",sans-serif`;
+  ctx.globalAlpha = .75 + .25 * Math.sin(T * 2.5);
+  ctx.fillText(live < 2 && landmarker ? t('gatherNoHand') : t('gather'), W / 2, H * .52);
+  ctx.globalAlpha = .6; ctx.shadowBlur = 0; ctx.font = `${15 * S}px -apple-system,"PingFang SC",sans-serif`;
+  ctx.fillText(t('gatherAlt'), W / 2, H * .52 + 34 * S);
+  const bw = 260 * S, by = H * .52 + 56 * S;
+  ctx.globalAlpha = 1; rr(W / 2 - bw / 2, by, bw, 8 * S, 4 * S); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill();
+  rr(W / 2 - bw / 2, by, bw * gather, 8 * S, 4 * S); ctx.fillStyle = '#ffd36b'; ctx.fill();
+  ctx.restore();
+}
+
+/* ---------------- 主循环 ---------------- */
+function frame(now) {
+  const dt = Math.min(.05, (now - lastFrame) / 1000); lastFrame = now; T += dt;
+  detect(now);
+  if (state === 'scatter') {
+    if (holdGather || mouseHold || keyHold) gather = Math.min(1, gather + dt / 1.8);
+    if (gather >= 1) {
+      state = 'treeDone'; starBoost = 1; spawnSnow(60);
+      setTimeout(startIntro, 900);
+    }
+  }
+  if (state === 'ending') endingStep(dt);
+  const sq = state === 'ending' && endPhase === 'tree' ? charge : 0;
+  spin += dt * (.25 + 2.4 * sq * sq);
+  starBoost = Math.max(sq * .8, starBoost - dt * 1.2);
+  keys.forEach(k => k.flash = Math.max(0, k.flash - dt / .35));
+  balls.forEach(b => b.glow = Math.max(0, b.glow - dt / .7));
+  ctx.clearRect(0, 0, W, H);
+  drawSnow(dt);
+  drawTree();
+  drawStar(tree.cx, (tree.topNow || tree.top) - 8 * S, Math.min(1, gather * 1.2));
+  if (state === 'intro' || state === 'ready' || state === 'play') { drawBoards(); drawTrails(dt); }
+  if (state === 'scatter') drawGatherHint();
+  if (state === 'ending' && !$('#greet').classList.contains('show')) drawEndHint();
+  drawFireworks(dt, now);
+  drawHands();
+  requestAnimationFrame(frame);
+}
+
+/* ---------------- 交互 ---------------- */
+let mouseHold = false, keyHold = false, mouseKey = null;
+cv.addEventListener('mousedown', e => {
+  initAudio();
+  if (state === 'scatter' || state === 'ending') { mouseHold = true; return; }
+  if (state === 'play') { const k = hitKey(e.clientX, e.clientY); if (k) { pressKey(k, 'user'); mouseKey = k; } }
+});
+cv.addEventListener('mousemove', e => {
+  if (state !== 'play' || !(e.buttons & 1)) return;
+  const k = hitKey(e.clientX, e.clientY);
+  if (k && k !== mouseKey) pressKey(k, 'user');
+  mouseKey = k;
+});
+addEventListener('mouseup', () => { mouseHold = false; mouseKey = null; });
+addEventListener('keydown', e => {
+  if (e.repeat) return;
+  const c = e.key.toLowerCase();
+  if (c === 'g') keyHold = true;
+  if (c === ' ') { e.preventDefault(); if (state === 'ready') startPlay(); }
+  if (c === 'a') toggleAuto();
+  if (c === '[' || c === ']') {
+    PRESS_T = Math.min(.9, Math.max(.15, PRESS_T + (c === ']' ? -.05 : .05)));
+    toast((lang === 'zh' ? '手指灵敏度：' : 'Finger sensitivity: ') + Math.round((.9 - PRESS_T) / .75 * 10) + '/10');
+  }
+  if (c === 's' && state === 'intro') endIntro(true);
+  if (c === 'h') toggleHelp();
+  if (c === 'v') { const el = $('#cam'); if (video.srcObject) el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+  if (c === 'f') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+});
+addEventListener('keyup', e => { if (e.key.toLowerCase() === 'g') keyHold = false; });
+function toggleHelp() { const el = $('#help'); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
+$('#skipBtn').onclick = () => endIntro(true);
+$('#readyBtn').onclick = () => { initAudio(); startPlay(); };
+$('#photoBtn').onclick = () => $('#photoIn').click();
+$('#txtBtn').onclick = () => $('#txtIn').click();
+$('#greetBtn').onclick = hideGreeting;
+function loadPhotos(files) {
+  const imgs = [...files].filter(f => f.type.startsWith('image/'));
+  if (!imgs.length) return;
+  photos = []; let done = 0;
+  imgs.forEach((f, i) => { const r = new FileReader(); r.onload = () => { photos[i] = r.result; if (++done === imgs.length) { photos = photos.filter(Boolean); toast(t('photos', photos.length)); } }; r.readAsDataURL(f); });
+}
+$('#photoIn').onchange = e => loadPhotos(e.target.files);
+$('#txtIn').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    const lines = String(r.result).split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    customWishes = true;
+    wishes = (lang === 'zh' ? DEFAULT_WISH : DEFAULT_WISH_EN).map((d, i) => lines[i] || d);
+    toast(t('wishes', Math.min(24, lines.length)));
+  };
+  r.readAsText(f, 'utf-8');
+};
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => { e.preventDefault(); loadPhotos(e.dataTransfer.files); });
+
+let toastTimer = null;
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2200); }
+
+/* 弹窗里的雪花 */
+(function () {
+  const box = $('#rbox');
+  for (let i = 0; i < 18; i++) {
+    const f = document.createElement('div'); f.className = 'flake'; f.textContent = '❄';
+    f.style.left = Math.random() * 100 + '%'; f.style.top = '-20px';
+    f.style.fontSize = (8 + Math.random() * 10) + 'px';
+    f.style.animationDuration = (5 + Math.random() * 6) + 's'; f.style.animationDelay = (-Math.random() * 8) + 's';
+    box.appendChild(f);
+  }
+})();
+
+$('#startBtn').onclick = () => {
+  initAudio();
+  $('#start').style.display = 'none';
+  state = 'scatter';
+  $('#side').style.display = 'flex';
+  initHands();
+};
+document.addEventListener('click', e => { const b = e.target.closest('button'); if (b) b.blur(); }, true);
+$('#langBtn').onclick = () => { lang = lang === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('xmasLang', lang); } catch (e) {} applyLang(); };
+layout();
+applyLang();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
