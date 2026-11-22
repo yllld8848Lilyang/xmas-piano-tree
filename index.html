@@ -13,12 +13,19 @@ html,body{width:100%;height:100%;overflow:hidden;background:#03040c;font-family:
 #help .k{color:#9a9a9a;font-size:12px;margin-top:4px}
 #langBtn{position:fixed;right:16px;top:16px;width:200px;z-index:45;background:rgba(30,32,40,.85);color:#ffe08a;border:1px solid rgba(255,215,130,.35);border-radius:10px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit}
 #langBtn:hover{background:rgba(50,52,62,.9)}
-#side{position:fixed;right:16px;top:68px;display:none;flex-direction:column;gap:10px;width:200px;z-index:5}
+#side{position:fixed;right:16px;top:68px;display:none;flex-direction:column;gap:10px;width:200px;z-index:26}
 #side button,#side label{background:rgba(30,32,40,.85);color:#eee;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;font-size:14px;cursor:pointer;text-align:center;display:flex;justify-content:center;align-items:center;gap:6px;font-family:inherit}
 #side button:hover,#side label:hover{background:rgba(50,52,62,.9)}
 #side button.on{background:#ffb84d;color:#222}
 #status{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:8px 20px;border-radius:20px;font-size:15px;white-space:nowrap;display:none;z-index:5}
-#cam{position:fixed;left:16px;bottom:16px;width:200px;height:112px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.15);background:#000;display:none;z-index:5}
+#cam{position:fixed;left:16px;bottom:16px;width:200px;height:112px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.15);background:#000;display:none;z-index:7;cursor:move;touch-action:none;user-select:none}
+#cam:hover{border-color:rgba(255,215,130,.6)}
+#camRz{position:absolute;right:0;bottom:0;width:22px;height:22px;cursor:nwse-resize;z-index:2;background:linear-gradient(135deg,transparent 50%,rgba(255,215,130,.85) 50%,rgba(255,215,130,.85) 58%,transparent 58%,transparent 70%,rgba(255,215,130,.85) 70%,rgba(255,215,130,.85) 78%,transparent 78%)}
+#camTip{position:absolute;left:0;right:0;top:0;padding:3px 6px;font-size:11px;color:#fff;background:linear-gradient(rgba(0,0,0,.55),transparent);opacity:0;transition:opacity .2s;pointer-events:none;z-index:2}
+#cam:hover #camTip{opacity:1}
+.modes{display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:14px;font-size:14px;color:#ffe9c9}
+.modes .dwell span{background:rgba(255,255,255,.12);box-shadow:none;font-size:15px;padding:9px 16px;font-weight:500}
+.modes .dwell.sel span{background:linear-gradient(135deg,#f4c95d,#d99a1e);color:#3a1d00;font-weight:700}
 #cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.75}
 #toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%) translateY(10px);background:rgba(20,22,30,.9);border:1px solid rgba(255,215,130,.35);padding:10px 22px;border-radius:22px;font-size:15px;opacity:0;transition:all .3s;pointer-events:none;z-index:30;white-space:nowrap}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -92,6 +99,7 @@ input[type=file]{display:none}
 </div>
 
 <div id="side">
+  <button id="modeBtn"></button>
   <button id="photoBtn" data-i18n="photoBtn"></button>
   <button id="txtBtn" data-i18n="txtBtn"></button>
 </div>
@@ -108,7 +116,7 @@ input[type=file]{display:none}
   <div class="zh" data-i18n="greetZh"></div>
   <div class="gfoot"><button class="dwell" id="greetBtn"><span data-i18n="greetBtn"></span></button></div>
 </div></div></div>
-<div id="cam"><video id="video" playsinline muted></video></div>
+<div id="cam"><video id="video" playsinline muted></video><div id="camTip" data-i18n="camTip"></div><div id="camRz"></div></div>
 <div id="toast"></div>
 <div id="card"><div class="ph"><img id="cardImg" alt=""></div><div id="cardCap"></div></div>
 
@@ -121,6 +129,10 @@ input[type=file]{display:none}
       <li data-i18n="r1"></li><li data-i18n="r2"></li><li data-i18n="r3"></li>
       <li data-i18n="r4"></li><li data-i18n="r5"></li><li data-i18n="r6"></li>
     </ul>
+    <div class="modes"><b data-i18n="modeTitle"></b>
+      <button class="dwell" id="m1" data-mode="1"><span data-i18n="m1"></span></button>
+      <button class="dwell" id="m3" data-mode="3"><span data-i18n="m3"></span></button>
+      <button class="dwell" id="m5" data-mode="5"><span data-i18n="m5"></span></button></div>
     <div class="go"><b data-i18n="go"></b> <span>👏</span></div>
     <div class="clapTip" data-i18n="clapTip"></div>
     <div id="clapMeter"><div id="clapSeen"></div><div class="bar"><i id="clapBar"></i></div></div>
@@ -146,15 +158,18 @@ const I18N = {
   zh: {
     langBtn: '🌐 English', title: '🎄 圣诞钢琴日历树', titleH: '🎹 圣诞钢琴日历树',
     startP: '用电脑 Chrome 打开，点下面的按钮，允许使用摄像头', startBtn: '开始 ✨', startNoCam: '没有摄像头也能玩：按住鼠标聚树，点琴键弹奏',
-    h1: '✋ 食指、中指、无名指往下弯，就能按琴键（左低音，右高音）', h2: '✨ 跟着发光的琴键弹，同色彩球会一起亮', h3: '🎁 每弹完一句，打开一天惊喜日历（13–24 天）',
+    h1: '✋ 手指往下按，就能弹琴键（左低音，右高音）；右上角可换 1 / 3 / 5 指', h2: '✨ 跟着发光的琴键弹，同色彩球会一起亮', h3: '🎁 每弹完一句，打开一天惊喜日历（13–24 天）',
     h4: '👋👋 双手一起向下拍 3 次：树自己演奏 / 停止', h5: '❄️ 手在屏幕最顶部晃一晃：下雪',
     hk: '键盘：S 跳过开场 · A 自动演奏 · H 隐藏/显示提示 · V 摄像头 · F 全屏 · [ ] 调手指灵敏度',
     photoBtn: '📷 选择照片', txtBtn: '📝 导入祝福 txt',
+    modeTitle: '选择演奏方式：', m1: '☝️ 一根手指', m3: '🤟 三根手指', m5: '🖐 五根手指',
+    modeBtn: n => `🎹 演奏方式：${n === 1 ? '一根' : n === 3 ? '三根' : '五根'}手指`, modeSet: n => `已切换为 ${n} 指演奏`,
+    camTip: '拖动移动 · 拖右下角缩放 · 双击还原',
     banner: '🎶 圣诞树正在为你演奏…看完 12 天日历，就轮到你啦', skip: '☝️ 跳过开场 ⏭ <small>手指停在这里 / 点击 / S</small>',
     greetZh: '圣诞快乐<br>感谢你陪我度过的这一年', greetBtn: '☝️ 结束 🎄 <small>手指停在这里 / 点击</small>',
     end1: '✊✊ 握紧双拳，把这一年的回忆攥在手心', end1s: '握得越久，圣诞树转得越快、越亮', end2: '🖐🖐 张开双手，把回忆撒向夜空！',
     end3: '✊✊ 再握拳，把星光聚回圣诞树', end3s: '张开、握拳，可以一直玩下去', endAlt: '没有摄像头？按住鼠标或 G 键 = 握拳，松开 = 张开',
-    r1: '🎹 两边是钢琴键盘：左边低音，右边高音', r2: '✋ 手放在琴键上方，食指、中指、无名指像弹琴一样往下弯，就会出声',
+    r1: '🎹 两边是钢琴键盘：左边低音，右边高音', r2: '✋ 手放在琴键上方，手指像弹琴一样往下按就会出声，只有该弹的音才会响',
     r3: '✨ 跟着发光的琴键弹，树上同色的彩球也会一起亮', r4: '🎁 前 12 天树已经帮你开好了，每弹完一句，再开一天（13–24）',
     r5: '👋👋 双手一起向下拍 3 次：让树自己演奏，再拍 3 次停下', r6: '❄️ 手在屏幕最顶部晃一晃：会下雪',
     go: '准备好啦，就拍拍手', clapTip: '先把两只手张开放到镜头前，再用力拍一下', readyBtn: '没摄像头？点这里或按空格开始',
@@ -172,15 +187,18 @@ const I18N = {
   en: {
     langBtn: '🌐 中文', title: '🎄 Christmas Piano Advent Tree', titleH: '🎹 Christmas Piano Advent Tree',
     startP: 'Open in Chrome on a computer, click the button below and allow the camera', startBtn: 'Start ✨', startNoCam: 'No camera? Hold the mouse to grow the tree, click keys to play',
-    h1: '✋ Bend your index, middle or ring finger to press a key (left low, right high)', h2: '✨ Follow the glowing key — the same-coloured bauble lights up too', h3: '🎁 Finish a phrase to open one advent day (days 13–24)',
+    h1: '✋ Press down with your fingers to play (left low, right high); switch 1 / 3 / 5 fingers top right', h2: '✨ Follow the glowing key — the same-coloured bauble lights up too', h3: '🎁 Finish a phrase to open one advent day (days 13–24)',
     h4: '👋👋 Slap down with both hands 3 times: autoplay on / off', h5: '❄️ Wave a hand at the very top of the screen: snow',
     hk: 'Keys: S skip intro · A autoplay · H show/hide tips · V camera · F fullscreen · [ ] finger sensitivity',
     photoBtn: '📷 Choose photos', txtBtn: '📝 Import wishes .txt',
+    modeTitle: 'How to play:', m1: '☝️ One finger', m3: '🤟 Three fingers', m5: '🖐 Five fingers',
+    modeBtn: n => `🎹 Mode: ${n === 1 ? 'one finger' : n === 3 ? 'three fingers' : 'five fingers'}`, modeSet: n => `Now playing with ${n} finger${n > 1 ? 's' : ''}`,
+    camTip: 'Drag to move · drag corner to resize · double-click to reset',
     banner: '🎶 The tree is playing for you… after 12 days it’s your turn', skip: '☝️ Skip intro ⏭ <small>hold a finger here / click / S</small>',
     greetZh: 'Thank you for spending<br>this year with me', greetBtn: '☝️ Finish 🎄 <small>hold a finger here / click</small>',
     end1: '✊✊ Clench both fists — hold this year’s memories tight', end1s: 'The longer you hold, the faster and brighter the tree spins', end2: '🖐🖐 Now open your hands — scatter the memories into the sky!',
     end3: '✊✊ Make fists again to gather the stars into a tree', end3s: 'Open, clench — play as long as you like', endAlt: 'No camera? Hold the mouse or G = fist, release = open',
-    r1: '🎹 A piano on each side: low notes on the left, high on the right', r2: '✋ Hover over the keys and bend your index, middle or ring finger like playing a real piano',
+    r1: '🎹 A piano on each side: low notes on the left, high on the right', r2: '✋ Hover over the keys and press down like on a real piano — only the right note will sound',
     r3: '✨ Follow the glowing key — the same-coloured bauble on the tree lights up too', r4: '🎁 The tree already opened days 1–12; each phrase you play opens the next day (13–24)',
     r5: '👋👋 Slap down with both hands 3 times to let the tree play; 3 more times to stop', r6: '❄️ Wave a hand at the very top of the screen: snow',
     go: 'Ready? Give a clap', clapTip: 'Open both hands in front of the camera, then clap firmly', readyBtn: 'No camera? Click here or press Space',
@@ -204,6 +222,7 @@ function applyLang() {
   document.title = t('title').replace('🎄 ', '');
   document.querySelectorAll('[data-i18n]').forEach(el => { el.innerHTML = t(el.dataset.i18n); });
   $('#langBtn').textContent = t('langBtn');
+  $('#modeBtn').textContent = t('modeBtn', playMode);
   if (boards[0]) { boards[0].label = t('low'); boards[1].label = t('high'); }
   if (!customWishes) wishes = (lang === 'zh' ? DEFAULT_WISH : DEFAULT_WISH_EN).slice();
   if (!$('#clapSeen').textContent || state !== 'ready') $('#clapSeen').textContent = t('seen0');
@@ -494,7 +513,8 @@ function dwellCheck(live, now) {
   const targets = [];
   if (state === 'intro' && !introEnding) targets.push(['skipBtn', () => endIntro(true)]);
   if ($('#greet').classList.contains('show')) targets.push(['greetBtn', hideGreeting]);
-  ['skipBtn', 'greetBtn'].forEach(id => { if (!targets.find(t => t[0] === id)) { dwell[id] = 0; $('#' + id).style.setProperty('--p', 0); $('#' + id).classList.remove('hot'); } });
+  if (state === 'ready') [1, 3, 5].forEach(m => { if (m !== playMode) targets.push(['m' + m, () => setMode(m)]); });
+  ['skipBtn', 'greetBtn', 'm1', 'm3', 'm5'].forEach(id => { if (!targets.find(t => t[0] === id)) { dwell[id] = 0; $('#' + id).style.setProperty('--p', 0); $('#' + id).classList.remove('hot'); } });
   targets.forEach(([id, fn]) => {
     const el = $('#' + id), r = el.getBoundingClientRect(), pad = 12;
     const on = live.some(h => [8, 12].some(i => { const q = h.pts[i]; return q.x > r.left - pad && q.x < r.right + pad && q.y > r.top - pad && q.y < r.bottom + pad; }));
@@ -629,7 +649,24 @@ function drawFireworks(dt, now) {
    - 每根手指有自己的“放松基准”，比基准多弯 PRESS_T 弧度算按下，回到 RELEASE_T 以内才算抬起（防抖）
    - 按哪个键看“开始弯之前”指尖的位置，弯的时候指尖会滑，不用它
    - 整只手上下移动不会改变弯曲角度，所以不会乱响 */
-const FINGERS = [[5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]];   // 食指、中指、无名指
+// 演奏方式：1 指 = 食指；3 指 = 食指、中指、无名指；5 指 = 全部（大拇指用 1-2-3-4 这条链）
+const FINGER_SETS = {
+  1: [[5, 6, 7, 8]],
+  3: [[5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]],
+  5: [[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16], [17, 18, 19, 20]],
+};
+let playMode = 3;
+try { const m = parseInt(localStorage.getItem('xmasMode')); if (FINGER_SETS[m]) playMode = m; } catch (e) {}
+let FINGERS = FINGER_SETS[playMode];
+function setMode(m, silent) {
+  if (!FINGER_SETS[m]) return;
+  playMode = m; FINGERS = FINGER_SETS[m];
+  Object.keys(pointers).forEach(k => delete pointers[k]);
+  try { localStorage.setItem('xmasMode', String(m)); } catch (e) {}
+  document.querySelectorAll('.modes .dwell').forEach(b => b.classList.toggle('sel', +b.dataset.mode === m));
+  $('#modeBtn').textContent = t('modeBtn', m);
+  if (!silent) toast(t('modeSet', m));
+}
 let PRESS_T = .3;   // 轻轻弯一点就算按下
 const ang3 = (a, b, c) => {
   const ux = b.x - a.x, uy = b.y - a.y, uz = b.z - a.z, vx = c.x - b.x, vy = c.y - b.y, vz = c.z - b.z;
@@ -649,10 +686,18 @@ function fingers(h) {
   FINGERS.forEach(([m, pip, dip, tip], fi) => {
     const id = h.label + fi;
     const raw = ang3(r[m], r[pip], r[dip]) + ang3(r[pip], r[dip], r[tip]);
-    const p = pointers[id] || (pointers[id] = { curl: raw, base: raw, t: now, down: false, lastPress: 0, aimX: h.pts[tip].x, aimY: h.pts[tip].y, prog: 0, aimKey: null });
+    const p = pointers[id] || (pointers[id] = { curl: raw, base: raw, t: now, down: false, lastPress: 0, aimX: h.pts[tip].x, aimY: h.pts[tip].y, prog: 0, aimKey: null, ty: h.pts[tip].y, vy: 0, poke: false });
     const dt = Math.max(.001, (now - p.t) / 1000);
-    if (dt > .3) { p.curl = raw; p.base = raw; p.t = now; p.down = false; return; }
+    if (dt > .3) { p.curl = raw; p.base = raw; p.t = now; p.down = false; p.ty = h.pts[tip].y; p.vy = 0; return; }
     p.t = now;
+    // 一指模式：除了弯手指，用指尖“往下戳”也算按
+    p.vy = p.vy * .4 + ((h.pts[tip].y - p.ty) / H / dt) * .6; p.ty = h.pts[tip].y;
+    if (playMode === 1) {
+      if (!p.poke && p.vy > .4 && now - p.lastPress > 110) {
+        p.poke = true; const k = hitKeyLoose(h.pts[tip].x, h.pts[tip].y);
+        if (k) { p.lastPress = now; pressKey(k, 'user'); }
+      } else if (p.poke && p.vy < -.05) p.poke = false;
+    }
     p.curl += (raw - p.curl) * .55;
     if (p.curl < p.base) p.base += (p.curl - p.base) * .5;          // 放松时基准马上跟下来
     else p.base += Math.min(p.curl - p.base, .25 * dt);              // 一直弯着时基准慢慢跟上去
@@ -1016,6 +1061,45 @@ function toggleHelp() { const el = $('#help'); el.style.display = el.style.displ
 $('#skipBtn').onclick = () => endIntro(true);
 $('#readyBtn').onclick = () => { initAudio(); startPlay(); };
 $('#photoBtn').onclick = () => $('#photoIn').click();
+$('#modeBtn').onclick = () => setMode(playMode === 1 ? 3 : playMode === 3 ? 5 : 1);
+document.querySelectorAll('.modes .dwell').forEach(b => b.onclick = () => setMode(+b.dataset.mode));
+
+/* 摄像头小窗：拖动移动，拖右下角（或滚轮）缩放，双击还原；位置和大小会记住 */
+(function () {
+  const cam = $('#cam'), rz = $('#camRz');
+  const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+  const place = (l, tp, w) => {
+    w = clamp(w, 120, innerWidth * .8); const h = w * 9 / 16;
+    cam.style.width = w + 'px'; cam.style.height = h + 'px'; cam.style.bottom = 'auto';
+    cam.style.left = clamp(l, 0, innerWidth - w) + 'px'; cam.style.top = clamp(tp, 0, innerHeight - h) + 'px';
+  };
+  const save = () => { const r = cam.getBoundingClientRect(); try { localStorage.setItem('xmasCam', JSON.stringify({ l: r.left, t: r.top, w: r.width })); } catch (e) {} };
+  try { const c = JSON.parse(localStorage.getItem('xmasCam') || 'null'); if (c) place(c.l, c.t, c.w); } catch (e) {}
+  let drag = null;
+  cam.addEventListener('pointerdown', e => {
+    e.preventDefault(); e.stopPropagation();
+    const r = cam.getBoundingClientRect();
+    drag = { mode: e.target === rz ? 'size' : 'move', x: e.clientX, y: e.clientY, l: r.left, t: r.top, w: r.width };
+    cam.setPointerCapture(e.pointerId);
+  });
+  cam.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (drag.mode === 'move') place(drag.l + dx, drag.t + dy, drag.w);
+    else place(drag.l, drag.t, drag.w + Math.max(dx, dy * 16 / 9));
+  });
+  const end = () => { if (drag) { drag = null; save(); } };
+  cam.addEventListener('pointerup', end); cam.addEventListener('pointercancel', end);
+  cam.addEventListener('wheel', e => {
+    e.preventDefault(); const r = cam.getBoundingClientRect();
+    place(r.left, r.top, r.width * (e.deltaY < 0 ? 1.08 : 1 / 1.08)); save();
+  }, { passive: false });
+  cam.addEventListener('dblclick', () => {
+    cam.style.cssText = cam.style.display ? 'display:' + cam.style.display : '';
+    try { localStorage.removeItem('xmasCam'); } catch (e) {}
+  });
+  addEventListener('resize', () => { if (cam.style.top) { const r = cam.getBoundingClientRect(); place(r.left, r.top, r.width); } });
+})();
 $('#txtBtn').onclick = () => $('#txtIn').click();
 $('#greetBtn').onclick = hideGreeting;
 function loadPhotos(files) {
@@ -1065,6 +1149,7 @@ document.addEventListener('click', e => { const b = e.target.closest('button'); 
 $('#langBtn').onclick = () => { lang = lang === 'zh' ? 'en' : 'zh'; try { localStorage.setItem('xmasLang', lang); } catch (e) {} applyLang(); };
 layout();
 applyLang();
+setMode(playMode, true);
 requestAnimationFrame(frame);
 </script>
 </body>
