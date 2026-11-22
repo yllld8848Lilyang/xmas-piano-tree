@@ -18,7 +18,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#03040c;font-family:
 #side button:hover,#side label:hover{background:rgba(50,52,62,.9)}
 #side button.on{background:#ffb84d;color:#222}
 #status{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(0,0,0,.6);padding:8px 20px;border-radius:20px;font-size:15px;white-space:nowrap;display:none;z-index:5}
-#cam{position:fixed;left:16px;bottom:16px;width:200px;height:112px;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.15);background:#000;display:none;z-index:7;cursor:move;touch-action:none;user-select:none}
+#cam{position:fixed;left:2px;bottom:1.7vh;width:23.4vw;height:auto;aspect-ratio:16/9;border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.15);background:#000;display:none;z-index:7;cursor:move;touch-action:none;user-select:none}
 #cam:hover{border-color:rgba(255,215,130,.6)}
 #camRz{position:absolute;right:0;bottom:0;width:22px;height:22px;cursor:nwse-resize;z-index:2;background:linear-gradient(135deg,transparent 50%,rgba(255,215,130,.85) 50%,rgba(255,215,130,.85) 58%,transparent 58%,transparent 70%,rgba(255,215,130,.85) 70%,rgba(255,215,130,.85) 78%,transparent 78%)}
 #camTip{position:absolute;left:0;right:0;top:0;padding:3px 6px;font-size:11px;color:#fff;background:linear-gradient(rgba(0,0,0,.55),transparent);opacity:0;transition:opacity .2s;pointer-events:none;z-index:2}
@@ -65,6 +65,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#03040c;font-family:
 .dwell.hot span{background:linear-gradient(135deg,#e0244a,#a8102e);transform:scale(1.04)}
 .dwell small{font-weight:400;font-size:12px;opacity:.75}
 /* 最终贺卡 */
+#replayBtn{position:fixed;left:18px;top:16px;z-index:27;display:none}
 #greet{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:28;pointer-events:none}
 #greet.show{display:flex}
 #greet .gcard{pointer-events:auto;width:min(620px,88vw);padding:10px;border-radius:26px;background:linear-gradient(135deg,#f4d27a,#fff3c4,#d9a93a);box-shadow:0 0 80px rgba(255,210,120,.55);animation:gpop .9s cubic-bezier(.2,1.5,.4,1)}
@@ -110,6 +111,7 @@ input[type=file]{display:none}
 <div id="status"></div>
 <div id="banner"><div class="txt" data-i18n="banner"></div>
   <button class="dwell" id="skipBtn"><span data-i18n="skip"></span></button></div>
+<button class="dwell" id="replayBtn"><span data-i18n="replay"></span></button>
 <div id="greet"><div class="gcard"><div class="gin" id="gin">
   <div class="row">🎄 ⭐ 🎁</div>
   <div class="en">Merry Christmas</div>
@@ -165,6 +167,7 @@ const I18N = {
     modeTitle: '选择演奏方式：', m1: '☝️ 一根手指', m3: '🤟 三根手指', m5: '🖐 五根手指',
     modeBtn: n => `🎹 演奏方式：${n === 1 ? '一根' : n === 3 ? '三根' : '五根'}手指`, modeSet: n => `已切换为 ${n} 指演奏`,
     camTip: '拖动移动 · 拖右下角缩放 · 双击还原',
+    replay: '🔄 重玩 <small>手指停在这里 / 点击</small>', replayed: '🎄 重新开始！双手握拳，把星光聚成圣诞树',
     banner: '🎶 圣诞树正在为你演奏…看完 12 天日历，就轮到你啦', skip: '☝️ 跳过开场 ⏭ <small>手指停在这里 / 点击 / S</small>',
     greetZh: '圣诞快乐<br>感谢你陪我度过的这一年', greetBtn: '☝️ 结束 🎄 <small>手指停在这里 / 点击</small>',
     end1: '✊✊ 握紧双拳，把这一年的回忆攥在手心', end1s: '握得越久，圣诞树转得越快、越亮', end2: '🖐🖐 张开双手，把回忆撒向夜空！',
@@ -194,6 +197,7 @@ const I18N = {
     modeTitle: 'How to play:', m1: '☝️ One finger', m3: '🤟 Three fingers', m5: '🖐 Five fingers',
     modeBtn: n => `🎹 Mode: ${n === 1 ? 'one finger' : n === 3 ? 'three fingers' : 'five fingers'}`, modeSet: n => `Now playing with ${n} finger${n > 1 ? 's' : ''}`,
     camTip: 'Drag to move · drag corner to resize · double-click to reset',
+    replay: '🔄 Play again <small>hold a finger here / click</small>', replayed: '🎄 Starting over! Make two fists to gather the tree',
     banner: '🎶 The tree is playing for you… after 12 days it’s your turn', skip: '☝️ Skip intro ⏭ <small>hold a finger here / click / S</small>',
     greetZh: 'Thank you for spending<br>this year with me', greetBtn: '☝️ Finish 🎄 <small>hold a finger here / click</small>',
     end1: '✊✊ Clench both fists — hold this year’s memories tight', end1s: 'The longer you hold, the faster and brighter the tree spins', end2: '🖐🖐 Now open your hands — scatter the memories into the sky!',
@@ -513,8 +517,9 @@ function dwellCheck(live, now) {
   const targets = [];
   if (state === 'intro' && !introEnding) targets.push(['skipBtn', () => endIntro(true)]);
   if ($('#greet').classList.contains('show')) targets.push(['greetBtn', hideGreeting]);
+  if (state === 'ending' && !$('#greet').classList.contains('show')) targets.push(['replayBtn', replay]);
   if (state === 'ready') [1, 3, 5].forEach(m => { if (m !== playMode) targets.push(['m' + m, () => setMode(m)]); });
-  ['skipBtn', 'greetBtn', 'm1', 'm3', 'm5'].forEach(id => { if (!targets.find(t => t[0] === id)) { dwell[id] = 0; $('#' + id).style.setProperty('--p', 0); $('#' + id).classList.remove('hot'); } });
+  ['skipBtn', 'greetBtn', 'replayBtn', 'm1', 'm3', 'm5'].forEach(id => { if (!targets.find(t => t[0] === id)) { dwell[id] = 0; $('#' + id).style.setProperty('--p', 0); $('#' + id).classList.remove('hot'); } });
   targets.forEach(([id, fn]) => {
     const el = $('#' + id), r = el.getBoundingClientRect(), pad = 12;
     const on = live.some(h => [8, 12].some(i => { const q = h.pts[i]; return q.x > r.left - pad && q.x < r.right + pad && q.y > r.top - pad && q.y < r.bottom + pad; }));
@@ -551,7 +556,21 @@ function startEnding() {
   auto = false; clearTimeout(autoTimer);
   ['#help', '#status'].forEach(s => $(s).style.display = 'none');
   $('#card').classList.remove('show');
+  $('#replayBtn').style.display = 'block';
   [60, 64, 67, 72].forEach((m, i) => setTimeout(() => playNote(m, .6), i * 90));
+}
+/* 重玩：回到最开始的“握拳聚树” */
+function replay() {
+  if (state !== 'ending') return;
+  $('#replayBtn').style.display = 'none';
+  state = 'scatter'; gather = 0; charge = 0; endPhase = 'tree'; exploding = false; holdGather = false;
+  auto = false; clearTimeout(autoTimer); introCount = 0; introEnding = false; opened = 12; recapIdx = 0;
+  songIdx = 0; phraseIdx = 0; noteIdx = 0;
+  parts.forEach(p => { p.sx = Math.random(); p.sy = Math.random(); });
+  ['#help', '#status', '#banner'].forEach(s => $(s).style.display = 'none');
+  fwUntil = 0; starBoost = 1;
+  [72, 67, 64, 60].forEach((m, i) => setTimeout(() => playNote(m, .5), i * 90));
+  toast(t('replayed'));
 }
 function explode() {
   endPhase = 'scatter'; exploding = true; charge = 0; starBoost = 1;
@@ -1073,8 +1092,8 @@ document.querySelectorAll('.modes .dwell').forEach(b => b.onclick = () => setMod
     cam.style.width = w + 'px'; cam.style.height = h + 'px'; cam.style.bottom = 'auto';
     cam.style.left = clamp(l, 0, innerWidth - w) + 'px'; cam.style.top = clamp(tp, 0, innerHeight - h) + 'px';
   };
-  const save = () => { const r = cam.getBoundingClientRect(); try { localStorage.setItem('xmasCam', JSON.stringify({ l: r.left, t: r.top, w: r.width })); } catch (e) {} };
-  try { const c = JSON.parse(localStorage.getItem('xmasCam') || 'null'); if (c) place(c.l, c.t, c.w); } catch (e) {}
+  const save = () => { const r = cam.getBoundingClientRect(); try { localStorage.setItem('xmasCam2', JSON.stringify({ l: r.left, t: r.top, w: r.width })); } catch (e) {} };
+  try { const c = JSON.parse(localStorage.getItem('xmasCam2') || 'null'); if (c) place(c.l, c.t, c.w); } catch (e) {}
   let drag = null;
   cam.addEventListener('pointerdown', e => {
     e.preventDefault(); e.stopPropagation();
@@ -1096,12 +1115,13 @@ document.querySelectorAll('.modes .dwell').forEach(b => b.onclick = () => setMod
   }, { passive: false });
   cam.addEventListener('dblclick', () => {
     cam.style.cssText = cam.style.display ? 'display:' + cam.style.display : '';
-    try { localStorage.removeItem('xmasCam'); } catch (e) {}
+    try { localStorage.removeItem('xmasCam2'); } catch (e) {}
   });
   addEventListener('resize', () => { if (cam.style.top) { const r = cam.getBoundingClientRect(); place(r.left, r.top, r.width); } });
 })();
 $('#txtBtn').onclick = () => $('#txtIn').click();
 $('#greetBtn').onclick = hideGreeting;
+$('#replayBtn').onclick = replay;
 function loadPhotos(files) {
   const imgs = [...files].filter(f => f.type.startsWith('image/'));
   if (!imgs.length) return;
